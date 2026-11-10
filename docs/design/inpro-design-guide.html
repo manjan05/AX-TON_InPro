@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>InPro 디자인 가이드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;500;700;800;900&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<style>
+  :root {
+    /* 레퍼런스 이미지에서 뽑은 토큰 */
+    --paper: #ecebe7;        /* 페이지 바탕: 따뜻한 밝은 회색 */
+    --paper-2: #f3f2ef;      /* 버튼·카드 바탕 */
+    --studio: #a9a9ae;       /* 히어로 사진 뒤 회색 띠 */
+    --studio-2: #d6d6d9;
+    --ink: #1c1c1c;          /* 본문·섹션 제목 */
+    --ink-soft: #5f5e5a;     /* 보조 글 */
+    --ink-mute: #8d8b86;     /* 내비게이션 */
+    --crimson: #6e0b14;      /* 유일한 강조색: 와인 레드 */
+    --crimson-2: #8a1420;
+    --rule: #c9c6bf;         /* 섹션 구분선 */
+    --white: #ffffff;
+
+    --font-display: "Roboto Condensed", "Pretendard", sans-serif;
+    --font-body: "Pretendard", "Roboto Condensed", sans-serif;
+    --font-mono: "Roboto Mono", monospace;
+
+    --pad: 36px;             /* 섹션 안쪽 여백 */
+    --max: 1180px;
+  }
+  * { box-sizing: border-box; }
+  html { background: linear-gradient(#d8d8da, #a8a8ac) fixed; }
+  body {
+    margin: 0; color: var(--ink); font-family: var(--font-body);
+    font-size: 14px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: var(--max); margin: 40px auto; background: var(--paper); }
+  @media (max-width: 760px) { .page { margin: 0; } }
+
+  /* 공통 */
+  .section { border-top: 1px solid var(--rule); padding: var(--pad); }
+  .split { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--rule); }
+  .split > * { padding: var(--pad); }
+  .split > * + * { border-left: 1px solid var(--rule); }
+  @media (max-width: 760px) {
+    :root { --pad: 20px; }
+    .split { grid-template-columns: 1fr; }
+    .split > * + * { border-left: 0; border-top: 1px solid var(--rule); }
+  }
+  .label { font-family: var(--font-display); font-weight: 700; font-size: 12px; letter-spacing: .02em; text-transform: uppercase; color: var(--crimson); margin: 0 0 10px; }
+  .label.ink { color: var(--ink); }
+  .h-section { font-family: var(--font-display); font-weight: 800; text-transform: uppercase; font-size: clamp(34px, 5vw, 52px); line-height: .95; letter-spacing: -.01em; margin: 0; }
+  .body-s { font-size: 12.5px; line-height: 1.65; color: var(--ink-soft); max-width: 300px; margin: 0; }
+  .mono { font-family: var(--font-mono); font-size: 11px; color: var(--ink-mute); }
+  .guide-note { font-size: 13px; color: var(--ink-soft); margin: 6px 0 0; max-width: 640px; }
+  .guide-num { font-family: var(--font-mono); font-size: 11px; color: var(--crimson); letter-spacing: .1em; }
+  code, pre { font-family: var(--font-mono); font-size: 12px; }
+
+  /* 내비게이션 */
+  .nav { display: flex; align-items: center; justify-content: space-between; padding: 22px var(--pad); }
+  .wordmark { font-family: var(--font-display); font-weight: 700; letter-spacing: .32em; font-size: 12px; color: var(--crimson); text-transform: uppercase; }
+  .nav-links { display: flex; gap: 14px; font-family: var(--font-display); font-size: 10.5px; letter-spacing: .06em; color: var(--ink-mute); text-transform: uppercase; }
+  .menu { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-size: 11px; letter-spacing: .06em; }
+  .menu i { display: block; width: 14px; height: 1px; background: var(--ink); box-shadow: 0 4px 0 var(--ink), 0 -4px 0 var(--ink); }
+  @media (max-width: 760px) { .nav-links { display: none; } }
+
+  /* 히어로 */
+  .hero { position: relative; }
+  .hero-top { padding: 28px var(--pad) 0; position: relative; z-index: 2; }
+  .hero-sub { font-family: var(--font-display); font-weight: 500; font-size: clamp(16px, 2vw, 21px); line-height: 1.2; text-transform: uppercase; max-width: 520px; margin: 0 0 8px; }
+  .hero-title { font-family: var(--font-display); font-weight: 900; color: var(--crimson); font-size: clamp(64px, 12vw, 132px); line-height: .82; letter-spacing: -.035em; margin: 0; text-transform: uppercase; }
+  .hero-band { height: 240px; margin-top: -40px; background: radial-gradient(ellipse at 45% 60%, #e9e9eb 0%, var(--studio-2) 35%, var(--studio) 100%); position: relative; }
+  .hero-band .ph { position: absolute; left: 14%; bottom: 26px; width: 46%; height: 150px; }
+  .circle-cta { position: absolute; right: 26px; top: 70px; z-index: 3; width: 180px; height: 180px; border: 1px solid var(--crimson); border-radius: 50%; display: grid; place-items: center; font-family: var(--font-display); font-size: 10px; letter-spacing: .06em; color: var(--crimson); text-transform: uppercase; text-decoration: none; line-height: 1.15; transition: background .25s, color .25s; }
+  .circle-cta:hover { background: var(--crimson); color: var(--white); }
+  .btn-rect { position: absolute; right: 26px; bottom: 26px; background: var(--paper-2); padding: 15px 70px; font-family: var(--font-display); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; border: 0; }
+  @media (max-width: 760px) {
+    .circle-cta { width: 110px; height: 110px; top: auto; bottom: 110px; right: 16px; }
+    .btn-rect { left: 16px; right: 16px; bottom: 16px; text-align: center; padding: 14px; }
+    .hero-band .ph { left: 16px; width: 55%; bottom: 70px; height: 120px; }
+    .hero-band { margin-top: 20px; }
+  }
+
+  /* 이미지 자리 (흑백 스튜디오 톤) */
+  .ph { background: linear-gradient(160deg, #f4f4f5 0%, #c9c9cd 55%, #8e8e93 100%); position: relative; filter: grayscale(1); }
+  .ph::after { content: attr(data-label); position: absolute; left: 10px; bottom: 8px; font-family: var(--font-mono); font-size: 10px; color: #55555a; }
+
+  /* 수치 표 */
+  .stats { border: 1px solid var(--crimson); }
+  .stat { display: grid; grid-template-columns: 120px 1fr; align-items: center; gap: 16px; padding: 8px 14px; border-top: 1px solid var(--crimson); }
+  .stat:first-child { border-top: 0; }
+  .stat b { font-family: var(--font-display); font-weight: 700; font-size: 38px; line-height: 1; letter-spacing: -.02em; }
+  .stat span { font-size: 11.5px; line-height: 1.5; color: var(--ink-soft); }
+  .stat.hl { background: var(--crimson); }
+  .stat.hl b, .stat.hl span { color: var(--white); }
+
+  .dash-list { list-style: none; padding: 0; margin: 0; font-size: 12.5px; color: var(--ink-soft); }
+  .dash-list li::before { content: "- "; }
+
+  /* 가이드 전용 블록 */
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0; border: 1px solid var(--rule); margin-top: 18px; }
+  .sw { border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+  .sw div { height: 78px; }
+  .sw p { margin: 0; padding: 8px 10px 10px; font-size: 12px; }
+  .sw p b { display: block; font-family: var(--font-display); text-transform: uppercase; font-size: 12px; }
+  .type-row { display: grid; grid-template-columns: 190px 1fr; gap: 20px; align-items: baseline; padding: 16px 0; border-top: 1px solid var(--rule); }
+  .type-row:first-of-type { border-top: 0; }
+  @media (max-width: 760px) { .type-row { grid-template-columns: 1fr; gap: 4px; } }
+  .grid-demo { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--rule); margin-top: 16px; }
+  .grid-demo div { height: 120px; padding: 12px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-mute); position: relative; }
+  .grid-demo div + div { border-left: 1px solid var(--rule); }
+  .grid-demo div::before { content: ""; position: absolute; inset: 36px; border: 1px dashed var(--crimson); opacity: .45; }
+  .dodont { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--rule); margin-top: 16px; }
+  .dodont > div { padding: 18px; }
+  .dodont > div + div { border-left: 1px solid var(--rule); }
+  .dodont h4 { margin: 0 0 8px; font-family: var(--font-display); text-transform: uppercase; font-size: 13px; }
+  .dodont ul { margin: 0; padding-left: 18px; font-size: 13px; color: var(--ink-soft); }
+  @media (max-width: 760px) { .dodont { grid-template-columns: 1fr; } .dodont > div + div { border-left: 0; border-top: 1px solid var(--rule); } }
+  pre { background: var(--paper-2); border: 1px solid var(--rule); padding: 16px; overflow-x: auto; line-height: 1.55; margin: 16px 0 0; }
+  .footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; padding: 22px var(--pad); border-top: 1px solid var(--rule); }
+  .footer .tag { font-family: var(--font-display); font-size: 10px; letter-spacing: .04em; color: var(--ink-mute); text-transform: uppercase; margin-top: 4px; }
+  .footer nav { display: flex; gap: 28px; font-family: var(--font-display); font-size: 11px; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- 표지 -->
+  <header class="section" style="border-top:0">
+    <div class="guide-num">DESIGN GUIDE · v0.1</div>
+    <h1 class="h-section" style="color:var(--crimson);margin-top:8px">InPro<br/>Design Guide</h1>
+    <p class="guide-note">레퍼런스 이미지(클래식 스포츠카 랜딩 페이지)를 분석해 정리한 InPro 웹페이지 디자인 가이드입니다. 레퍼런스의 <b>분위기·레이아웃·컴포넌트 규칙</b>만 가져오고, 로고·브랜드명·사진은 쓰지 않습니다. 아래 예시는 모두 InPro 내용으로 바꿔 넣었습니다.</p>
+  </header>
+
+  <!-- 01 무드 -->
+  <section class="section">
+    <div class="guide-num">01 · MOOD</div>
+    <h2 class="h-section" style="font-size:34px;margin:6px 0 10px">Editorial, Quiet, One Accent</h2>
+    <div class="split" style="border:1px solid var(--rule)">
+      <div>
+        <p class="label">핵심 인상</p>
+        <ul class="dash-list">
+          <li>잡지 지면처럼 정돈된 <b>에디토리얼</b> 레이아웃</li>
+          <li>따뜻한 회색 종이 바탕 + 흑백 사진</li>
+          <li>색은 <b>와인 레드 하나</b>만, 제목·수치·강조에 집중</li>
+          <li>둥근 모서리·그림자 없음. 1px 선으로만 구획</li>
+          <li>크고 좁은(condensed) 대문자 제목 vs 아주 작은 본문의 대비</li>
+        </ul>
+      </div>
+      <div>
+        <p class="label">InPro에 주는 의미</p>
+        <p class="body-s" style="max-width:none">"특허·법률 문서를 다루는 신뢰할 수 있는 도구"라는 인상을 줍니다. 화려한 AI 스타트업 톤(그라데이션, 네온) 대신 <b>정확하고 차분한 전문 서비스</b>로 보이게 하는 게 목표입니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 컬러 -->
+  <section class="section">
+    <div class="guide-num">02 · COLOR</div>
+    <p class="guide-note">면적 비율 기준: 종이 회색 ~75% · 잉크 ~15% · 스튜디오 회색 ~7% · 와인 레드 3~5%. 레드는 한 화면에 3곳 이내로 씁니다.</p>
+    <div class="swatches">
+      <div class="sw"><div style="background:var(--paper)"></div><p><b>Paper</b>#ECEBE7 · 페이지 바탕</p></div>
+      <div class="sw"><div style="background:var(--paper-2)"></div><p><b>Paper 2</b>#F3F2EF · 버튼·카드</p></div>
+      <div class="sw"><div style="background:var(--studio)"></div><p><b>Studio</b>#A9A9AE · 히어로 띠</p></div>
+      <div class="sw"><div style="background:var(--rule)"></div><p><b>Rule</b>#C9C6BF · 구분선</p></div>
+      <div class="sw"><div style="background:var(--ink)"></div><p><b>Ink</b>#1C1C1C · 제목·본문</p></div>
+      <div class="sw"><div style="background:var(--ink-soft)"></div><p><b>Ink Soft</b>#5F5E5A · 보조 글</p></div>
+      <div class="sw"><div style="background:var(--ink-mute)"></div><p><b>Ink Mute</b>#8D8B86 · 내비게이션</p></div>
+      <div class="sw"><div style="background:var(--crimson)"></div><p><b>Crimson</b>#6E0B14 · 유일한 강조색</p></div>
+    </div>
+  </section>
+
+  <!-- 03 타이포 -->
+  <section class="section">
+    <div class="guide-num">03 · TYPOGRAPHY</div>
+    <p class="guide-note">영문·숫자는 <b>Roboto Condensed</b>, 한글은 <b>Pretendard</b>. 한글에는 좁은 서체가 없으니 굵기(800~900)와 자간(-0.03em)으로 좁은 느낌을 냅니다.</p>
+    <div style="margin-top:14px">
+      <div class="type-row"><div class="mono">DISPLAY · 900 · 132/0.82 · -0.035em · Crimson</div><div class="hero-title" style="font-size:clamp(56px,9vw,104px)">INPRO</div></div>
+      <div class="type-row"><div class="mono">HERO SUB · 500 · 21/1.2 · 대문자</div><div class="hero-sub" style="margin:0">From invention intake to patent attorney. 발명 접수부터 변리사 전달까지.</div></div>
+      <div class="type-row"><div class="mono">SECTION · 800 · 52/0.95 · 대문자</div><div class="h-section">Nothing<br/>Repeats</div></div>
+      <div class="type-row"><div class="mono">STAT · 700 · 38/1</div><div style="font-family:var(--font-display);font-weight:700;font-size:38px;line-height:1">300 → 50</div></div>
+      <div class="type-row"><div class="mono">LABEL · 700 · 12 · 대문자 · Crimson</div><div class="label" style="margin:0">The Iconic Workflow</div></div>
+      <div class="type-row"><div class="mono">BODY S · 400 · 12.5/1.65 · 폭 300px 이내</div><p class="body-s">연구원이 쓴 메모를 그대로 넣으면 InPro가 구성 요소를 뽑고, 빠진 항목을 짚고, 변리사에게 보낼 자료까지 정리합니다.</p></div>
+      <div class="type-row"><div class="mono">NAV · 400 · 10.5 · +0.06em · 대문자</div><div class="nav-links" style="display:flex">Workflow · Evidence · Pricing</div></div>
+    </div>
+  </section>
+
+  <!-- 04 레이아웃 -->
+  <section class="section">
+    <div class="guide-num">04 · LAYOUT</div>
+    <ul class="dash-list" style="margin-top:10px">
+      <li>최대 폭 1180px, 바깥은 회색 그라데이션 위에 페이지가 "한 장의 종이"처럼 떠 있음</li>
+      <li>기본 구조는 <b>50:50 두 칸</b>. 칸 사이·섹션 사이를 1px 선으로 구획</li>
+      <li>칸 안쪽 여백 36px (모바일 20px). 섹션 높이는 내용에 맞추되 여백을 넉넉히</li>
+      <li>글은 칸 아래쪽이나 구석에 작게 몰고, 나머지는 빈 공간이나 이미지로 둠</li>
+      <li>요소가 선을 넘어 겹치는 연출(히어로의 원형 버튼)은 화면당 1번만</li>
+    </ul>
+    <div class="grid-demo"><div>COL A · padding 36</div><div>COL B · padding 36</div></div>
+  </section>
+
+  <!-- 05 컴포넌트: 실제 InPro 예시 -->
+  <section class="section" style="padding-bottom:12px">
+    <div class="guide-num">05 · COMPONENTS — InPro 적용 예시</div>
+    <p class="guide-note">아래는 레퍼런스 구성을 InPro 내용으로 바꾼 미리보기입니다. 사진 자리는 흑백 이미지(제품 화면 캡처, 문서 사진 등)로 채웁니다.</p>
+  </section>
+
+  <nav class="nav" style="border-top:1px solid var(--rule)">
+    <span class="wordmark">InPro</span>
+    <span class="nav-links"><span>Workflow</span><span>Evidence</span><span>Pricing</span></span>
+    <span class="menu"><i></i>Menu</span>
+  </nav>
+
+  <div class="hero">
+    <div class="hero-top">
+      <p class="hero-sub">Intellectual Property, in progress.<br/>발명 접수부터 변리사 전달까지 멈추지 않게.</p>
+      <h2 class="hero-title">InPro</h2>
+    </div>
+    <a class="circle-cta" href="#">View<br/>Work<br/>flow</a>
+    <div class="hero-band">
+      <div class="ph" data-label="흑백 제품 화면 / 문서 사진"></div>
+      <button class="btn-rect">데모 시작하기</button>
+    </div>
+  </div>
+
+  <div class="split">
+    <div><div class="ph" style="height:300px" data-label="큰 세로 이미지"></div></div>
+    <div style="display:flex;flex-direction:column;justify-content:space-between;gap:24px">
+      <div class="ph" style="width:46%;height:110px;margin:20px auto 0" data-label="작은 이미지"></div>
+      <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:20px">
+        <div><p class="label">The Repeating Work</p><p class="body-s">"키워드로 찾으면 300건이 뜨는데 실제로 관련 있는 건 50건 정도." 특허 담당자는 매번 찾고, 읽고, 보완을 요청하고, 다시 정리합니다.</p></div>
+        <div><p class="label">Key Features</p><ul class="dash-list"><li>AI 발명 접수</li><li>원문 근거 비교표</li><li>보완 질문 자동화</li><li>사내 승인 기록</li><li>변리사 전달자료</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="split">
+    <div><h3 class="h-section">Nothing<br/>Repeats</h3></div>
+    <div>
+      <div class="stats">
+        <div class="stat"><b>300</b><span>건 중 실제 관련 문헌은 50건. 걸러내는 일을 InPro가 먼저 합니다.</span></div>
+        <div class="stat"><b>40p</b><span>한 건에 40페이지인 특허 문서를 구성 요소별 비교표로 압축합니다.</span></div>
+        <div class="stat hl"><b>6</b><span>단계로 발명 접수부터 승인된 변리사 전달자료까지 한 흐름으로 잇습니다.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="split">
+    <div><p class="label ink">Evidence</p><div class="ph" style="width:60%;height:120px;margin:16px 0" data-label="비교표 화면"></div><p class="body-s">모든 비교 판단에 원문 위치를 붙이고, 근거가 없으면 '근거 부족'으로 표시합니다.</p></div>
+    <div><p class="label ink">Human in the Loop</p><p class="body-s" style="margin-top:16px">AI는 초안을 만들고, 담당자가 확인하고, 승인자가 확정합니다. 최종 판단은 언제나 사람이 합니다.</p></div>
+  </div>
+
+  <footer class="footer">
+    <div><span class="wordmark">InPro</span><div class="tag">Intellectual Property, in progress</div></div>
+    <nav><span>Contact</span><span>About</span></nav>
+    <span class="mono">© 2026 Team Commit</span>
+  </footer>
+
+  <!-- 06 컴포넌트 규칙 -->
+  <section class="section">
+    <div class="guide-num">06 · COMPONENT RULES</div>
+    <div class="split" style="border:1px solid var(--rule);margin-top:14px">
+      <div>
+        <p class="label">버튼</p>
+        <ul class="dash-list">
+          <li><b>사각 버튼:</b> Paper 2 바탕, 테두리 없음, 글자에 밑줄, 대문자 11px. 각진 모서리</li>
+          <li><b>원형 버튼:</b> 지름 180px, 1px 와인 레드 선, 글자를 세 줄로 쪼갬. 호버 시 레드로 채움</li>
+          <li>한 화면에 주요 버튼은 1개, 원형 버튼은 히어로에만</li>
+        </ul>
+        <p class="label" style="margin-top:18px">수치 표</p>
+        <ul class="dash-list">
+          <li>1px 레드 테두리, 줄마다 큰 숫자 + 작은 설명</li>
+          <li><b>마지막 줄만</b> 레드로 채워 결론을 강조</li>
+        </ul>
+      </div>
+      <div>
+        <p class="label">이미지</p>
+        <ul class="dash-list">
+          <li>흑백 또는 채도를 크게 낮춘 사진. 밝은 회색 스튜디오 배경</li>
+          <li>모서리 없음, 그림자 없음, 테두리 없음</li>
+          <li>제품 화면 캡처도 회색조로 처리하고 레드 강조만 남김</li>
+        </ul>
+        <p class="label" style="margin-top:18px">목록·라벨</p>
+        <ul class="dash-list">
+          <li>목록은 점 대신 "- " 하이픈</li>
+          <li>블록 위 라벨은 12px 대문자, 레드(소개) 또는 잉크(섹션명)</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 반응형 -->
+  <section class="section">
+    <div class="guide-num">07 · RESPONSIVE</div>
+    <ul class="dash-list" style="margin-top:10px">
+      <li>760px 이하에서 두 칸 → 한 칸, 세로 구분선은 가로선으로 바뀜</li>
+      <li>히어로 제목은 화면 폭에 맞춰 줄어들되(clamp) 한 줄 유지, 원형 버튼은 110px로 축소</li>
+      <li>사각 버튼은 이미지 위에서 빠져나와 전체 폭 버튼으로</li>
+      <li>내비게이션 링크는 숨기고 MENU만 남김</li>
+      <li>수치 표는 그대로 전체 폭. 숫자 크기는 유지하고 설명만 줄바꿈</li>
+    </ul>
+  </section>
+
+  <!-- 08 Do / Don't -->
+  <section class="section">
+    <div class="guide-num">08 · DO / DON'T</div>
+    <div class="dodont">
+      <div><h4 style="color:var(--crimson)">Do</h4><ul><li>여백을 아끼지 않기</li><li>강조는 레드 하나로</li><li>큰 제목 + 작은 본문의 대비 유지</li><li>선으로 구획하기</li></ul></div>
+      <div><h4>Don't</h4><ul><li>둥근 모서리, 그림자, 그라데이션 버튼</li><li>파랑·초록 등 두 번째 강조색</li><li>컬러 사진, 아이콘 남발</li><li>레퍼런스의 로고·브랜드명·사진 사용</li></ul></div>
+    </div>
+  </section>
+
+  <!-- 09 토큰 -->
+  <section class="section">
+    <div class="guide-num">09 · TOKENS (globals.css에 바로 복사)</div>
+<pre>:root {
+  --paper: #ecebe7;   --paper-2: #f3f2ef;
+  --studio: #a9a9ae;  --rule: #c9c6bf;
+  --ink: #1c1c1c;     --ink-soft: #5f5e5a;  --ink-mute: #8d8b86;
+  --crimson: #6e0b14; /* 유일한 강조색 */
+
+  --font-display: "Roboto Condensed", "Pretendard", sans-serif;
+  --font-body: "Pretendard", sans-serif;
+
+  --pad: 36px;        /* 모바일 20px */
+  --max: 1180px;
+  --radius: 0;        /* 모든 요소 각지게 */
+  --line: 1px solid var(--rule);
+}</pre>
+  </section>
+
+</div>
+</body>
+</html>

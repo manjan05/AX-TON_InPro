@@ -1,11 +1,19 @@
-# hackathon-project
+# InPro
 
-아이디어 해커톤 팀 프로젝트.
+**Intellectual Property, in progress.** 발명 접수부터 변리사 전달까지, 특허 담당자의 반복 업무를 잇는 AI 특허 업무 솔루션. (Team Commit · Campus AX-Ton)
 
-## 워크플로우
+## 실행
 
-- **Claude Code**: 로컬에서 코드 작성
-- **GitHub**: 팀의 최신본이 모이는 단일 저장소 (이 저장소)
-- **Vercel**: GitHub에 push하면 자동으로 배포되는 공개 링크
+```bash
+npm install
+# .env.local 에 GOOGLE_GENERATIVE_AI_API_KEY=... 추가
+npm run dev
+```
 
-`.env` 파일은 절대 커밋하지 않습니다 (`.gitignore`에 등록됨).
+## 구조
+
+- `app/page.tsx`, `components/inpro/` — 6단계 작업 화면 (사건 생성 → 조사 범위 → 문헌 검토 → 기술 보완 → 사내 검토 → 변리사 전달)
+- `app/api/inpro/` — intake · search · compare · review API
+- `lib/inpro/` — AI 프롬프트, 선행조사 검색, 원문 근거 확인, 전달자료 생성
+- `data/` — 데모 검색 DB (출연연 공개 기술·특허)
+- `docs/design/inpro-design-guide.html` — 디자인 가이드
