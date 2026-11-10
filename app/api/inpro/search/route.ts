@@ -1,0 +1,19 @@
+import { NextRequest, NextResponse } from "next/server";
+import { CORPUS, searchPriorArt } from "@/lib/inpro/search";
+
+export async function POST(req: NextRequest) {
+  const { keywords } = (await req.json()) as { keywords?: string[] };
+  if (!keywords?.length) {
+    return NextResponse.json({ error: "검색 키워드가 없습니다." }, { status: 400 });
+  }
+  const docs = searchPriorArt(keywords, 10);
+  return NextResponse.json({
+    docs,
+    log: {
+      searchedAt: new Date().toISOString(),
+      keywords,
+      corpus: `출연연 공개 기술·특허 ${CORPUS.length.toLocaleString()}건 (데모 DB)`,
+      hits: docs.length,
+    },
+  });
+}
