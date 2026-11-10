@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runReview } from "@/lib/inpro/ai";
-import { aiError, tooLarge } from "@/lib/inpro/route-utils";
+import { aiError, tooLarge, readJson } from "@/lib/inpro/route-utils";
 import type { ComparisonRow, IntakeResult } from "@/lib/inpro/types";
 
 export async function POST(req: NextRequest) {
-  const { intake, rows, answers, context } = (await req.json()) as {
+  const parsed = await readJson<{
     intake?: IntakeResult;
     rows?: ComparisonRow[];
     answers?: string;
     context?: string;
-  };
+  }>(req);
+  if ("error" in parsed) return parsed.error;
+  const { intake, rows, answers, context } = parsed.body;
   if (!intake || !rows?.length) {
     return NextResponse.json({ error: "비교표가 먼저 필요합니다." }, { status: 400 });
   }

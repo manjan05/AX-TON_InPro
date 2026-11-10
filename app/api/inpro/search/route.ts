@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CORPUS, searchPriorArt } from "@/lib/inpro/search";
-import { LIMITS } from "@/lib/inpro/route-utils";
+import { LIMITS, readJson } from "@/lib/inpro/route-utils";
 
 export async function POST(req: NextRequest) {
-  const { keywords } = (await req.json()) as { keywords?: string[] };
+  const parsed = await readJson<{ keywords?: string[] }>(req);
+  if ("error" in parsed) return parsed.error;
+  const { keywords } = parsed.body;
   if (!keywords?.length) {
     return NextResponse.json({ error: "검색 키워드가 없습니다." }, { status: 400 });
   }
