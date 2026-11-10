@@ -48,7 +48,7 @@ const compareSchema = z.object({
       componentId: z.string(),
       docId: z.string().describe("가장 가까운 문헌의 id. 맞는 문헌이 없으면 \"없음\""),
       relation: z.enum(["공통", "차이 후보", "확인 안 됨"]),
-      quote: z.string().describe("판단 근거가 되는 문헌 초록 속 문장을 글자 그대로 복사. 없으면 빈 문자열"),
+      quote: z.string().describe("판단 근거가 되는 초록·청구항 속 문장을 글자 그대로 복사. 없으면 빈 문자열"),
       note: z.string().describe("판단 이유 한 문장"),
       nextCheck: z.string().describe("담당자나 연구원이 다음에 확인할 것 한 문장"),
     })
@@ -61,7 +61,10 @@ export async function runCompare(
 ): Promise<RawComparison[]> {
   const compList = components.map((c) => `- ${c.id} ${c.name}: ${c.description}`).join("\n");
   const docList = docs
-    .map((d) => `### 문헌 id=${d.id}\n제목: ${d.title}\n출원인: ${d.applicant}\n초록: ${d.abstract}`)
+    .map(
+      (d) =>
+        `### 문헌 id=${d.id}\n제목: ${d.title}\n출원인: ${d.applicant}\n초록: ${d.abstract}${d.claims ? `\n대표 청구항: ${d.claims}` : ""}`
+    )
     .join("\n\n");
   const { output } = await generateText({
     model: MODEL_ID,
@@ -69,10 +72,10 @@ export async function runCompare(
     prompt: `발명의 각 구성 요소를 아래 선행 문헌과 대조해 비교표를 만든다. 구성 요소마다 한 행.
 
 판단 기준:
-- 공통: 문헌 초록에 같은 구성이 명시돼 있다. quote에 그 문장을 초록에서 글자 그대로 복사한다.
+- 공통: 문헌 초록이나 대표 청구항에 같은 구성이 명시돼 있다. quote에 그 문장을 글자 그대로 복사한다. 청구항이 있으면 청구항을 우선 본다.
 - 차이 후보: 가장 가까운 문헌에도 이 구성은 없다. quote에는 그 문헌에서 가장 가까운 문장을 복사한다.
-- 확인 안 됨: 초록만으로는 판단할 수 없다.
-- 등록 가능성이나 침해 여부는 판단하지 않는다. 초록에 없는 내용을 지어내지 않는다.
+- 확인 안 됨: 초록·청구항만으로는 판단할 수 없다.
+- 등록 가능성이나 침해 여부는 판단하지 않는다. 문헌에 없는 내용을 지어내지 않는다.
 
 [발명 구성 요소]
 ${compList}

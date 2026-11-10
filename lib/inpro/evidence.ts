@@ -1,4 +1,5 @@
 import type { ComparisonRow, InventionComponent, Relation } from "./types";
+import { sourceText } from "./corpus";
 
 function normalize(s: string): string {
   return s.replace(/[\s"'“”‘’]/g, "");
@@ -27,7 +28,7 @@ export interface RawComparison {
 export function verifyComparisons(
   raw: RawComparison[],
   components: InventionComponent[],
-  docs: { id: string; title: string; abstract: string }[]
+  docs: { id: string; title: string; abstract: string; claims?: string }[]
 ): ComparisonRow[] {
   const docById = new Map(docs.map((d) => [d.id, d]));
   return components.map((c) => {
@@ -58,7 +59,7 @@ export function verifyComparisons(
         nextCheck: r?.nextCheck || "검색 범위를 넓혀 다시 조사",
       };
     }
-    const verified = quoteExists(doc.abstract, r.quote);
+    const verified = quoteExists(sourceText(doc), r.quote);
     let relation: Relation;
     if (r.relation === "공통") relation = verified ? "공통" : "근거 부족";
     else if (r.relation === "차이 후보") relation = "차이 후보";

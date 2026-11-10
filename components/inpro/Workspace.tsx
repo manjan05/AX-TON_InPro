@@ -18,6 +18,7 @@ import { changedComponents } from "@/lib/inpro/evidence";
 import { buildHandoffMarkdown, openQuestions, type CaseEvent, type SurveyRecord } from "@/lib/inpro/package";
 import { DISCLOSURE_TYPES, disclosureStatus } from "@/lib/inpro/disclosure";
 import { Button, Card, CompareTable, InProLogo, StepTitle, Tag } from "./ui";
+import { FunnelPanel } from "./FunnelPanel";
 
 // 팀장 인터뷰 질문 2의 실제 발명 검토 흐름을 따른다
 const STEPS = ["발명 접수", "기술 이해·보완", "선행기술 조사", "특허성·사업성", "권리범위 설계", "출원 결정·전달"];
@@ -68,6 +69,7 @@ export function Workspace() {
   const [searchLog, setSearchLog] = useState<SearchLog | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openDoc, setOpenDoc] = useState<string | null>(null);
+  const [searchScope, setSearchScope] = useState<{ usage?: string; facet?: string } | null>(null);
   const [rows, setRows] = useState<ComparisonRow[]>([]);
   const [confirmed, setConfirmed] = useState<Set<string>>(new Set());
   const [changed, setChanged] = useState<Set<string>>(new Set());
@@ -181,7 +183,7 @@ export function Workspace() {
   // STEP 3
   async function doSearch() {
     const result = await run("search", () =>
-      post<{ docs: PriorDoc[]; log: SearchLog }>("/api/inpro/search", { keywords })
+      post<{ docs: PriorDoc[]; log: SearchLog }>("/api/inpro/search", { keywords, ...searchScope })
     );
     if (!result) return;
     setDocs(result.docs);
@@ -256,7 +258,7 @@ export function Workspace() {
     const result = await run("resurvey", async () => {
       const next = await post<IntakeResult>("/api/inpro/intake", { description: newDesc, answers: answersText });
       const kws = Array.from(new Set([...keywords, ...next.keywords]));
-      const found = await post<{ docs: PriorDoc[]; log: SearchLog }>("/api/inpro/search", { keywords: kws });
+      const found = await post<{ docs: PriorDoc[]; log: SearchLog }>("/api/inpro/search", { keywords: kws, ...searchScope });
       const ids = Array.from(new Set([...selected, ...found.docs.slice(0, 2).map((d) => d.id)])).slice(0, 6);
       const cmp = await compareWith(next.components, ids);
       return { next, kws, found, ids, cmp };
@@ -552,6 +554,7 @@ export function Workspace() {
           {step === 3 && intake && (
             <Card>
               <StepTitle n={3} title="선행기술 조사" sub="검색어를 확정하고, 비교할 문헌을 고르면 구성 요소별로 원문과 대조합니다. 원문에서 확인되지 않은 판단은 '근거 부족'으로 낮춥니다." />
+              <FunnelPanel scope={searchScope} onScope={setSearchScope} />
               <div className="mb-3 flex flex-wrap gap-2">
                 {keywords.map((k) => (
                   <span key={k} className="inline-flex items-center gap-1 px-3 py-1 text-[13px] font-bold" style={{ background: "var(--crimson-soft)", color: "var(--crimson)" }}>
@@ -574,8 +577,8 @@ export function Workspace() {
                 <Button onClick={doSearch} loading={busy === "search"} disabled={keywords.length === 0}>선행조사 실행</Button>
               </form>
               <p className="mb-3 font-mono text-[11px]" style={{ color: "var(--ink-soft)" }}>
-                범위: 출연연 공개 기술·특허 (데모 DB) · 국내 · 초록 기준 1차 검토
-                {searchLog && ` · ${new Date(searchLog.searchedAt).toLocaleString("ko-KR")} · 후보 ${searchLog.hits}건`}
+                국내 · 초록·대표 청구항 기준 1차 검토
+                {searchLog && ` · ${new Date(searchLog.searchedAt).toLocaleString("ko-KR")} · ${searchLog.corpus} · 후보 ${searchLog.hits}건`}
               </p>
 
               {docs.length > 0 && (

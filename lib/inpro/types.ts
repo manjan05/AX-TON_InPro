@@ -28,6 +28,9 @@ export interface PriorDoc {
   registrationDate: string;
   category?: string;
   abstract: string;
+  claims?: string;
+  usage?: string;
+  facet?: string;
   score: number;
   matchedKeywords: string[];
 }

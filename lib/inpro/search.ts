@@ -1,22 +1,23 @@
 import generalTech from "@/data/staging/general-tech.json";
 import patents from "@/data/patents.json";
+import airFilter from "@/data/domains/air-filter.json";
 import type { PriorDoc } from "./types";
+import { funnel, type FunnelResult, type RawDoc } from "./corpus";
 
-interface RawDoc {
-  id: string;
-  title: string;
-  abstract: string;
-  applicant: string;
-  registrationDate: string;
-  category?: string;
+export type { RawDoc };
+
+// 시연 분야: 가정용 공기청정기 필터 (KIPRIS에서 팀원이 수집 → scripts/import-patents.ts로 변환)
+// 아직 데이터가 없으면 1차 때 모은 출연연 공개 기술·특허(데모 DB)를 쓴다.
+const DOMAIN = (airFilter as RawDoc[]).length > 0 ? { name: "공기청정기 필터", docs: airFilter as RawDoc[] } : null;
+const DEMO: RawDoc[] = dedupe([...(patents as RawDoc[]), ...(generalTech as RawDoc[])]);
+
+export const CORPUS: RawDoc[] = DOMAIN ? DOMAIN.docs : DEMO;
+export const CORPUS_NAME = DOMAIN ? DOMAIN.name : "출연연 공개 기술·특허 (데모 DB)";
+export const DEFAULT_SCOPE = DOMAIN ? { usage: "가정용", facet: "형상" } : {};
+
+export function scopedCorpus(usage?: string, facet?: string): FunnelResult {
+  return funnel(CORPUS, DOMAIN ? DOMAIN.name : "데모 DB", DOMAIN ? usage : undefined, DOMAIN ? facet : undefined);
 }
-
-// 데모 검색 대상: 출연연 공개 기술·특허 데이터 (NTB·KIPRIS에서 1차 발표 때 수집한 것).
-// 실제 서비스에서는 KIPRISPlus 계약 후 국내 공개·등록 특허 전체로 바꾼다.
-export const CORPUS: RawDoc[] = dedupe([
-  ...(patents as RawDoc[]),
-  ...(generalTech as RawDoc[]),
-]);
 
 function dedupe(docs: RawDoc[]): RawDoc[] {
   const seen = new Set<string>();
@@ -58,7 +59,8 @@ export function scoreDoc(doc: RawDoc, keywords: string[]): { score: number; matc
 function phraseScore(doc: RawDoc, kw: string): number {
   const inTitle = doc.title.includes(kw);
   const abstractHits = countOccurrences(doc.abstract, kw);
-  return (inTitle ? 3 : 0) + Math.min(abstractHits, 3);
+  const claimHits = doc.claims ? countOccurrences(doc.claims, kw) : 0;
+  return (inTitle ? 3 : 0) + Math.min(abstractHits, 3) + Math.min(claimHits, 2);
 }
 
 function countOccurrences(text: string, kw: string): number {
