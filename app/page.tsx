@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { ApprovalMock, CompareMock } from "@/components/landing/Mockups";
 import { HeroDocs, WorkflowCircle } from "@/components/landing/HeroDocs";
 import { WorkflowSection } from "@/components/landing/WorkflowSection";
+import { PricingSection } from "@/components/landing/PricingSection";
 
 export default function Landing() {
   return (
@@ -12,7 +12,7 @@ export default function Landing() {
           <Link href="/" className="lp-wordmark">InPro</Link>
           <div className="hidden gap-5 md:flex">
             <a href="#workflow" className="lp-nav-link">Workflow</a>
-            <a href="#evidence" className="lp-nav-link">Evidence</a>
+            <a href="#pricing" className="lp-nav-link">Pricing</a>
           </div>
           <Link href="/workspace" className="flex items-center gap-2 font-[family-name:var(--font-display)] text-[11px] uppercase tracking-[.06em]">
             <span className="block h-px w-3.5 bg-[var(--ink)] shadow-[0_4px_0_var(--ink),0_-4px_0_var(--ink)]" />
@@ -46,27 +46,8 @@ export default function Landing() {
         {/* WORKFLOW */}
         <WorkflowSection />
 
-        {/* SPLIT: 근거 / 사람 */}
-        <section id="evidence" className="lp-split scroll-mt-4">
-          <div>
-            <p className="lp-label ink">Evidence</p>
-            <div className="lp-frame my-5 aspect-[16/10] w-[78%]">
-              <CompareMock />
-            </div>
-            <p className="lp-body">
-              AI가 붙인 인용이 원문에 실제로 있는지 서버가 다시 확인합니다. 확인되지 않으면 &lsquo;근거 부족&rsquo;으로 낮춰 표시합니다.
-            </p>
-          </div>
-          <div>
-            <p className="lp-label ink">Human in the Loop</p>
-            <div className="lp-frame my-5 aspect-[16/10] w-[62%]">
-              <ApprovalMock />
-            </div>
-            <p className="lp-body">
-              AI는 초안을 만들고, 담당자가 모든 줄을 확인하고, 승인자가 확정합니다. 신규성·침해의 최종 판단은 변리사가 합니다.
-            </p>
-          </div>
-        </section>
+        {/* PRICING */}
+        <PricingSection />
 
         {/* FOOTER */}
         <footer className="lp-rule flex flex-wrap items-center justify-between gap-5 px-[var(--pad)] py-6">
