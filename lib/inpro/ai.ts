@@ -3,6 +3,7 @@ import { z } from "zod";
 import { MODEL_ID } from "../ai-client";
 import type { IntakeResult, PriorDoc, ReviewDraft, ComparisonRow, InventionComponent, ScopeResult } from "./types";
 import type { RawComparison } from "./evidence";
+import { GLOSSARY } from "./search";
 
 const intakeSchema = z.object({
   title: z.string().describe("발명의 가칭, 20자 이내"),
@@ -29,6 +30,10 @@ export async function runIntake(description: string, answers?: string): Promise<
 - 빠진 항목은 출원 검토에 실제로 필요한 것만 쓴다 (예: 제어 조건, 비교 실험, 도면 부호, 효과 수치).
 - 보완 질문은 연구원이 바로 답할 수 있게 구체적으로 쓴다.
 - 이미 보완 답변에서 해결된 항목은 빠진 항목과 질문에서 뺀다.
+- 검색 키워드는 특허 문서에 실제로 쓰이는 말로 쓴다. 아래 분야 용어 사전에 관련된 말이 있으면 그 표현을 쓴다.
+
+[분야 용어 사전 (같은 줄은 같은 뜻)]
+${GLOSSARY.map((g) => g.join(" = ")).join("\n")}
 
 [연구원 발명 자료]
 ${description}

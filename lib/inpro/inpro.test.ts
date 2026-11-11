@@ -109,3 +109,35 @@ describe("disclosure alert", () => {
     expect(disclosureStatus({ date: "2026-11-01", type: "논문 발표" }, today).level).toBe("지남");
   });
 });
+
+import { expandKeywords, rankDocs, recallAtK } from "./scoring";
+
+describe("glossary search", () => {
+  const glossary = [["주름", "플리츠", "절곡"]];
+  const pleat = { id: "p", title: "플리츠형 공기 필터", abstract: "여과재를 플리츠 형태로 접는다", applicant: "", registrationDate: "" };
+  it("expands a keyword with its synonyms at lower weight", () => {
+    const g = expandKeywords(["주름 필터"], glossary)[0];
+    expect(g.terms.find((t) => t.term === "주름 필터")?.weight).toBe(1);
+    expect(g.terms.find((t) => t.term === "플리츠")?.weight).toBe(0.7);
+  });
+  it("finds a doc that only uses the synonym and labels the match", () => {
+    expect(rankDocs([pleat], ["주름"])).toHaveLength(0);
+    const hit = rankDocs([pleat], ["주름"], { glossary });
+    expect(hit[0].matchedKeywords).toEqual(["플리츠(=주름)"]);
+  });
+  it("does not inflate scores by counting several synonyms of one keyword", () => {
+    const both = { ...pleat, abstract: "플리츠 절곡 주름" };
+    // 제목의 "플리츠"(3+1점)×0.7 = 2.8 이 최고점. 주름(1)·절곡(0.7)까지 더한 4.5가 되면 안 된다
+    const score = rankDocs([both], ["주름"], { glossary })[0].score;
+    expect(score).toBeCloseTo(2.8);
+  });
+});
+
+describe("recallAtK", () => {
+  it("counts expected docs found in the top k", () => {
+    const r = recallAtK(["a", "b", "c", "d"], ["b", "d", "z"], 3);
+    expect(r.hit).toEqual(["b"]);
+    expect(r.missed).toEqual(["d", "z"]);
+    expect(r.recall).toBeCloseTo(1 / 3);
+  });
+});
