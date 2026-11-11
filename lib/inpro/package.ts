@@ -1,5 +1,6 @@
 import type { ComparisonRow, Decision, Disclosure, IntakeResult, ReviewDraft, ScopeResult } from "./types";
 import { disclosureStatus } from "./disclosure";
+import type { Matrix } from "./matrix";
 
 export interface CaseEvent {
   at: string; // ISO
@@ -28,6 +29,30 @@ export interface HandoffInput {
   searchLog: { searchedAt: string; keywords: string[]; corpus: string } | null;
   disclosure: Disclosure | null;
   surveys: SurveyRecord[];
+  exclusions?: { id: string; title: string; reason: string }[];
+  matrix?: Matrix | null;
+}
+
+const SYM = { 있음: "●", 일부: "◐", 없음: "○", "확인 필요": "?" } as const;
+
+export function matrixMarkdown(m: Matrix): string[] {
+  const head = `| 구성 | ${m.docs.map((d) => d.label).join(" | ")} |`;
+  const sep = `|---|${m.docs.map(() => "---").join("|")}|`;
+  const body = m.components.map(
+    (c) => `| ${c.id} ${c.name} | ${m.docs.map((d) => SYM[m.cells.find((x) => x.componentId === c.id && x.docId === d.id)?.presence ?? "확인 필요"]).join(" | ")} |`
+  );
+  return [
+    `- 신규성 위험 ${m.verdict.novelty.level}: ${m.verdict.novelty.text}`,
+    `- 진보성 위험 ${m.verdict.inventive.level}: ${m.verdict.inventive.text}`,
+    "",
+    head,
+    sep,
+    ...body,
+    "",
+    ...m.docs.map((d) => `- ${d.label}: ${d.title} (${d.id})`),
+    "- ● 있음(원문 인용 확인) ◐ 일부 ○ 없음 ? 확인 필요",
+    "",
+  ];
 }
 
 export function openQuestions(input: Pick<HandoffInput, "qa" | "review" | "rows">): string[] {
@@ -69,6 +94,7 @@ export function buildHandoffMarkdown(input: HandoffInput): string {
     "",
     "## 3. 선행 문헌 비교표 [AI 제안, 원문 인용 확인됨]",
     "",
+    ...(input.matrix ? ["### 구성 × 문헌 매트릭스", "", ...matrixMarkdown(input.matrix), "### 구성별 요약", ""] : []),
     "| 구성 | 가장 가까운 문헌 | 판단 | 원문 근거 | 다음 확인 |",
     "|---|---|---|---|---|",
     ...rows.map(
@@ -107,6 +133,9 @@ export function buildHandoffMarkdown(input: HandoffInput): string {
       ? `- 최근 조사: ${fmt(input.searchLog.searchedAt)} / ${input.searchLog.corpus} / 키워드: ${input.searchLog.keywords.join(", ")}`
       : "- 기록 없음",
     ...input.surveys.map((s) => `- [${s.stage}] ${fmt(s.at)} · 판단 바뀐 구성 ${s.changedCount}개${s.note ? ` · ${s.note}` : ""}`),
+    ...(input.exclusions?.length
+      ? ["", "제외한 후보 문헌 (담당자 판단):", ...input.exclusions.map((e) => `- ${e.title} (${e.id}) — ${e.reason}`)]
+      : []),
     "- 신규성·진보성, 침해 여부의 최종 판단은 변리사님께 요청드립니다.",
   ];
   return lines.filter((l, i, arr) => !(l === "" && arr[i - 1] === "")).join("\n");

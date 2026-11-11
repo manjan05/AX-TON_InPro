@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { runCompare } from "@/lib/inpro/ai";
-import { verifyComparisons } from "@/lib/inpro/evidence";
+import { runMatrix } from "@/lib/inpro/ai";
+import { buildMatrix, rowsFromMatrix } from "@/lib/inpro/matrix";
 import { findDocs } from "@/lib/inpro/search";
 import { aiError, tooLarge, readJson } from "@/lib/inpro/route-utils";
 import type { InventionComponent, PriorDoc } from "@/lib/inpro/types";
@@ -18,13 +18,17 @@ export async function POST(req: NextRequest) {
   const big = tooLarge({ components });
   if (big) return big;
   // 원문은 클라이언트가 보낸 값이 아니라 서버 DB에서 다시 읽는다 (근거 조작 방지)
-  const docs = findDocs(docIds.slice(0, 6));
+  const ids = docIds.slice(0, 6);
+  const found = findDocs(ids);
+  // 담당자가 고른 순서(검색 순위) 그대로 문헌 A, B, C…로 붙인다
+  const docs = ids.map((id) => found.find((d) => d.id === id)).filter((d): d is (typeof found)[number] => !!d);
   try {
-    const raw = await runCompare(
+    const { cells, nextChecks } = await runMatrix(
       components,
       docs.map((d) => ({ ...d, score: 0, matchedKeywords: [] })) as PriorDoc[]
     );
-    return NextResponse.json({ rows: verifyComparisons(raw, components, docs) });
+    const matrix = buildMatrix(components, docs, cells);
+    return NextResponse.json({ rows: rowsFromMatrix(matrix, nextChecks, components), matrix });
   } catch (err) {
     return aiError(err);
   }

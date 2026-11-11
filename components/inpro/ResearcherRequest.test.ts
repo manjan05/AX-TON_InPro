@@ -14,3 +14,12 @@ describe("buildRequestMessage", () => {
     expect(m.split("\n")[0]).toBe("[InPro 발명 보완 요청] t");
   });
 });
+
+import { splitAlternatives } from "./StepParts";
+
+describe("splitAlternatives", () => {
+  it("splits AI-written alternatives into chips", () => {
+    expect(splitAlternatives("물결무늬 채널, 나선형 파이프, 혹은 불규칙 절곡형 유로")).toEqual(["물결무늬 채널", "나선형 파이프", "불규칙 절곡형 유로"]);
+    expect(splitAlternatives("롤형 또는 M자 주름")).toEqual(["롤형", "M자 주름"]);
+  });
+});

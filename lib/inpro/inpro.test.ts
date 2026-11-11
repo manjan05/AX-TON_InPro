@@ -73,7 +73,7 @@ describe("search", () => {
   });
   it("matches multi-word phrases token by token at half weight", () => {
     const r = scoreDoc(doc, ["펌프 제어"]);
-    expect(r.matched).toEqual(["펌프 제어"]);
+    expect(r.matched).toEqual(["펌프 제어 · 부분"]);
     expect(r.score).toBeGreaterThan(0);
     expect(r.score).toBeLessThan(scoreDoc(doc, ["펌프"]).score + 0.01);
   });
@@ -139,5 +139,38 @@ describe("recallAtK", () => {
     expect(r.hit).toEqual(["b"]);
     expect(r.missed).toEqual(["d", "z"]);
     expect(r.recall).toBeCloseTo(1 / 3);
+  });
+});
+
+import { nearMisses, relatedComponents } from "./scoring";
+
+describe("search explanations", () => {
+  const glossary = [["주름", "플리츠"]];
+  const mk = (id: string, title: string, abstract: string, claims?: string) => ({ id, title, abstract, claims, applicant: "", registrationDate: "" });
+  const corpus = [
+    mk("A", "주름 필터", "여과재를 주름으로 접어 여과 면적을 늘린다.", "여과재가 삼각 주름을 이루는 필터."),
+    mk("B", "프레임", "필터를 고정한다. 주름은 없다."),
+    mk("C", "플리츠 필터", "플리츠 형태 여과재."),
+  ];
+  it("explains where each keyword hit and quotes the claim first", () => {
+    const [top] = rankDocs(corpus, ["주름", "여과재"], { glossary });
+    expect(top.id).toBe("A");
+    const d = top.explain!.details.find((x) => x.origin === "주름")!;
+    expect(d.fields).toEqual(["제목", "요약", "청구항"]);
+    expect(top.explain!.snippet).toMatchObject({ field: "청구항", term: "주름" });
+    expect(top.explain!.bonus).toBe(1.25);
+  });
+  it("gives a reason for docs pushed out of the top k", () => {
+    const r = nearMisses(corpus, ["주름", "여과재"], { limit: 1, glossary });
+    expect(r.total).toBe(2);
+    expect(r.items[0].rank).toBe(2);
+    expect(r.items.some((n) => n.reason.startsWith("검색어 1개만 일치"))).toBe(true);
+  });
+  it("links docs to invention components by words and synonyms", () => {
+    const comps = [
+      { id: "C1", name: "1차 주름", description: "" },
+      { id: "C2", name: "자석 결합", description: "" },
+    ];
+    expect(relatedComponents(corpus[2], comps, glossary)).toEqual(["C1 1차 주름"]);
   });
 });

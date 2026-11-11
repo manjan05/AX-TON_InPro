@@ -33,7 +33,39 @@ export interface PriorDoc {
   facet?: string;
   score: number;
   matchedKeywords: string[];
+  explain?: DocExplain;
 }
+
+// 선행조사 설명: 왜 이 문헌이 후보에 들어왔는가
+export type MatchField = "제목" | "요약" | "청구항";
+
+export interface MatchDetail {
+  origin: string; // 담당자가 확정한 검색어
+  term: string; // 실제로 걸린 말 (동의어일 수 있음)
+  points: number; // 이 검색어로 얻은 점수 (동의어 가중치 반영)
+  fields: MatchField[];
+  partialToken?: string; // 구(phrase)가 통째로는 없고 이 단어만 맞은 경우 (부분 일치, 점수 절반)
+}
+
+export interface DocExplain {
+  details: MatchDetail[];
+  bonus: number; // 여러 검색어 동시 일치 배수
+  snippet: { field: MatchField; text: string; term: string } | null;
+  relatedComponents: string[]; // "C1 1차 주름" 형식
+}
+
+export interface NearMiss {
+  id: string;
+  title: string;
+  applicant: string;
+  rank: number;
+  score: number;
+  reason: string;
+}
+
+// 담당자가 후보에서 뺄 때 고르는 이유 (조사 기록·학습 데이터)
+export const EXCLUDE_REASONS = ["관련 없음", "이미 검토함", "중복", "기타"] as const;
+export type ExcludeReason = (typeof EXCLUDE_REASONS)[number];
 
 // "근거 부족" = AI가 비교 판단을 냈지만 원문에서 인용을 확인하지 못한 경우
 export type Relation = "공통" | "차이 후보" | "근거 부족";

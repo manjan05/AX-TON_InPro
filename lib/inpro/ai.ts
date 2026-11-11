@@ -2,7 +2,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import { MODEL_ID } from "../ai-client";
 import type { IntakeResult, PriorDoc, ReviewDraft, ComparisonRow, InventionComponent, ScopeResult } from "./types";
-import type { RawComparison } from "./evidence";
+import type { RawCell } from "./matrix";
 import { GLOSSARY } from "./search";
 
 const intakeSchema = z.object({
@@ -47,23 +47,24 @@ ${answers ? `\n[연구원 보완 답변]\n${answers}` : ""}`,
   };
 }
 
-const compareSchema = z.object({
-  rows: z.array(
+const matrixSchema = z.object({
+  cells: z.array(
     z.object({
       componentId: z.string(),
-      docId: z.string().describe("가장 가까운 문헌의 id. 맞는 문헌이 없으면 \"없음\""),
-      relation: z.enum(["공통", "차이 후보", "확인 안 됨"]),
-      quote: z.string().describe("판단 근거가 되는 초록·청구항 속 문장을 글자 그대로 복사. 없으면 빈 문자열"),
-      note: z.string().describe("판단 이유 한 문장"),
-      nextCheck: z.string().describe("담당자나 연구원이 다음에 확인할 것 한 문장"),
+      docId: z.string(),
+      presence: z.enum(["있음", "일부", "없음"]),
+      quote: z.string().describe("판단 근거가 되는 초록·청구항 속 문장을 글자 그대로 복사. 없음이면 빈 문자열"),
+      note: z.string().describe("판단 이유 한 문장. 일부면 무엇이 같고 무엇이 다른지"),
     })
   ),
+  nextChecks: z.array(z.object({ componentId: z.string(), nextCheck: z.string().describe("담당자나 연구원이 다음에 확인할 것 한 문장") })),
 });
 
-export async function runCompare(
+// 구성 × 문헌 모든 칸을 판단한다 (매트릭스). 신규성·진보성 판정은 서버가 칸 결과로 계산한다.
+export async function runMatrix(
   components: InventionComponent[],
   docs: PriorDoc[]
-): Promise<RawComparison[]> {
+): Promise<{ cells: RawCell[]; nextChecks: Record<string, string> }> {
   const compList = components.map((c) => `- ${c.id} ${c.name}: ${c.description}`).join("\n");
   const docList = docs
     .map(
@@ -73,13 +74,14 @@ export async function runCompare(
     .join("\n\n");
   const { output } = await generateText({
     model: MODEL_ID,
-    output: Output.object({ schema: compareSchema }),
-    prompt: `발명의 각 구성 요소를 아래 선행 문헌과 대조해 비교표를 만든다. 구성 요소마다 한 행.
+    output: Output.object({ schema: matrixSchema }),
+    prompt: `발명의 구성 요소 하나하나를 선행 문헌 하나하나와 대조한다. 모든 (구성, 문헌) 쌍에 대해 한 칸씩 판단한다.
+구성 ${components.length}개 × 문헌 ${docs.length}개 = ${components.length * docs.length}칸을 빠짐없이 채운다.
 
 판단 기준:
-- 공통: 문헌 초록이나 대표 청구항에 같은 구성이 명시돼 있다. quote에 그 문장을 글자 그대로 복사한다. 청구항이 있으면 청구항을 우선 본다.
-- 차이 후보: 가장 가까운 문헌에도 이 구성은 없다. quote에는 그 문헌에서 가장 가까운 문장을 복사한다.
-- 확인 안 됨: 초록·청구항만으로는 판단할 수 없다.
+- 있음: 그 문헌의 초록이나 청구항에 같은 구성이 명시돼 있다. quote에 그 문장을 글자 그대로 복사한다. 청구항이 있으면 청구항을 우선 본다.
+- 일부: 비슷한 구성이 있지만 핵심 특징(형상·위치·수치·작동 방식 등)이 다르다. note에 무엇이 다른지 쓴다.
+- 없음: 그 문헌에 이 구성이 없다.
 - 등록 가능성이나 침해 여부는 판단하지 않는다. 문헌에 없는 내용을 지어내지 않는다.
 
 [발명 구성 요소]
@@ -88,7 +90,8 @@ ${compList}
 [선행 문헌]
 ${docList}`,
   });
-  return output.rows;
+  const nextChecks = Object.fromEntries(output.nextChecks.map((n) => [n.componentId, n.nextCheck]));
+  return { cells: output.cells, nextChecks };
 }
 
 const level = z.enum(["높음", "보통", "낮음"]);
@@ -149,7 +152,7 @@ const scopeSchema = z.object({
       componentName: z.string(),
       role: z.enum(["핵심", "대체 가능", "부가"]),
       reason: z.string().describe("이렇게 분류한 이유 한 문장"),
-      alternatives: z.string().describe("경쟁사가 이 구성 대신 쓸 수 있는 다른 기술 수단"),
+      alternatives: z.string().describe("경쟁사가 이 구성 대신 쓸 수 있는 다른 기술 수단 2~4개. 각각 15자 이내 명사구, 쉼표로 구분. 예: 롤형 감기, M자 주름, 허니콤 구조"),
       designAround: z.enum(["어려움", "보통", "쉬움"]).describe("경쟁사가 이 구성을 피해 같은 효과를 내기가 얼마나 쉬운지"),
     })
   ),
