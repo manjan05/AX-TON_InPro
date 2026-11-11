@@ -19,15 +19,11 @@ import { buildHandoffMarkdown, openQuestions, type CaseEvent, type SurveyRecord 
 import { DISCLOSURE_TYPES, disclosureStatus } from "@/lib/inpro/disclosure";
 import { Button, Card, CompareTable, InProLogo, StepTitle, Tag } from "./ui";
 import { FunnelPanel } from "./FunnelPanel";
+import { ResearcherRequest } from "./ResearcherRequest";
+import { EMPTY_FORM, EXAMPLE_FORM, IntakeForm, composeDescription, type IntakeFormState } from "./IntakeForm";
 
 // 팀장 인터뷰 질문 2의 실제 발명 검토 흐름을 따른다
 const STEPS = ["발명 접수", "기술 이해·보완", "선행기술 조사", "특허성·사업성", "권리범위 설계", "출원 결정·전달"];
-
-const SAMPLE = `배터리 팩 냉각 장치를 개발했습니다.
-기존에는 냉각수 채널이 직선형이라 셀 사이 온도 편차가 컸습니다.
-새 구조는 냉각 채널을 지그재그 형태로 바꾸고, 셀마다 붙인 온도 센서 값에 따라 펌프 유량을 조절합니다.
-온도가 높은 구간에서는 유량을 늘리고, 낮은 구간에서는 줄여 펌프 전력을 아낍니다.
-실험 메모: 시제품에서 셀 간 최대 온도 차가 줄어든 것을 확인함. 도면 2장 첨부 예정.`;
 
 const ROLES: ScopeRole[] = ["핵심", "대체 가능", "부가"];
 
@@ -55,6 +51,8 @@ export function Workspace() {
   const [events, setEvents] = useState<CaseEvent[]>([]);
 
   // 1. 발명 접수
+  const [form, setForm] = useState<IntakeFormState>(EMPTY_FORM);
+  const [caseNo, setCaseNo] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [discDate, setDiscDate] = useState("");
   const [discType, setDiscType] = useState(DISCLOSURE_TYPES[0]);
@@ -62,6 +60,7 @@ export function Workspace() {
   // 2. 기술 이해·보완
   const [questions, setQuestions] = useState<string[]>([]);
   const [answers, setAnswers] = useState<string[]>([]);
+  const [requestSentAt, setRequestSentAt] = useState<string | null>(null);
   // 3. 선행기술 조사
   const [keywords, setKeywords] = useState<string[]>([]);
   const [newKeyword, setNewKeyword] = useState("");
@@ -134,8 +133,15 @@ export function Workspace() {
 
   // STEP 1
   async function doIntake() {
-    const result = await run("intake", () => post<IntakeResult>("/api/inpro/intake", { description }));
+    const composed = composeDescription(form);
+    const result = await run("intake", () => post<IntakeResult>("/api/inpro/intake", { description: composed }));
     if (!result) return;
+    setDescription(composed);
+    if (!caseNo) {
+      const d = new Date();
+      const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+      setCaseNo(`INV-${ymd}-${String(Math.floor(Math.random() * 900) + 100)}`);
+    }
     setIntake(result);
     setKeywords(result.keywords);
     setQuestions(result.questions);
@@ -337,7 +343,7 @@ export function Workspace() {
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="min-w-0">
               <div className="font-mono text-[11px] font-bold tracking-widest" style={{ color: "var(--ink-soft)" }}>
-                CASE · {intake ? intake.field : "새 발명 사건"}
+                {caseNo ?? "CASE"} · {intake ? intake.field : "새 발명 사건"}
               </div>
               <h1
                 className="truncate font-[family-name:var(--font-display)] text-[44px] font-black uppercase leading-none tracking-[-.02em] max-sm:text-[32px]"
@@ -409,7 +415,7 @@ export function Workspace() {
         </div>
       </section>
 
-      <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[1fr_300px]">
+      <main className={`mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 ${step <= 2 ? "" : "lg:grid-cols-[1fr_300px]"}`}>
         <div className="min-w-0 space-y-5">
           {error && (
             <div className="no-print border px-4 py-3 text-sm font-bold" style={{ borderColor: "#d9b8bb", background: "#efe2e2", color: "var(--crimson)" }}>
@@ -420,76 +426,32 @@ export function Workspace() {
           {/* STEP 1 */}
           {step === 1 && (
             <Card>
-              <StepTitle n={1} title="발명 접수" sub="연구원이 쓴 메모를 그대로 붙여넣으면 InPro가 기술 구성을 뽑고 빠진 항목을 표시합니다." />
-              <div className="ws-sheet">
-                <div className="flex items-center justify-between border-b px-4 py-2.5" style={{ borderColor: "var(--hairline)" }}>
-                  <span className="font-mono text-[10.5px] font-bold tracking-widest" style={{ color: "var(--ink-soft)" }}>
-                    연구원 메모 · 자유 형식
-                  </span>
-                  <span className="font-mono text-[10.5px]" style={{ color: "var(--ink-mute)" }}>
-                    {description.length}자{description.trim().length < 20 ? " · 20자 이상" : ""}
-                  </span>
-                </div>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={8}
-                  placeholder={"발명 내용, 해결하려는 문제, 기존 방식과의 차이, 적용 제품, 실험 메모를\n평소 쓰던 말 그대로 적어주세요. 정리는 InPro가 합니다."}
-                  className="block w-full resize-y px-4 py-1 text-[14px] outline-none"
-                />
-              </div>
-              <div className="mt-3 border p-3" style={{ borderColor: "var(--hairline)" }}>
-                <div className="mb-2 text-[13px] font-extrabold">
-                  외부 공개 예정 <span className="font-normal" style={{ color: "var(--ink-soft)" }}>— 논문·전시·제안 전에는 출원 여부를 먼저 정해야 합니다</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <select value={discType} onChange={(e) => setDiscType(e.target.value)} className={inputCls} style={{ borderColor: "var(--hairline)", background: "#fff" }} aria-label="공개 유형">
-                    {DISCLOSURE_TYPES.map((t) => <option key={t}>{t}</option>)}
-                  </select>
-                  <input type="date" value={discDate} onChange={(e) => setDiscDate(e.target.value)} className={inputCls} style={{ borderColor: "var(--hairline)", background: "#fff" }} aria-label="공개 예정일" />
-                  {discDate && <Button variant="ghost" onClick={() => setDiscDate("")}>공개 예정 없음</Button>}
-                </div>
-                {disc && (
-                  <p className="mt-2 text-[12.5px] font-bold" style={{ color: disc.level === "여유" ? "var(--ink-soft)" : "var(--crimson)" }}>
-                    {disc.message}
-                  </p>
-                )}
-              </div>
-              <div className="mt-5 flex flex-wrap items-center gap-3">
-                <Button arrow onClick={doIntake} loading={busy === "intake"} disabled={description.trim().length < 20}>AI로 정리하기</Button>
-                <Button variant="ghost" onClick={() => setDescription(SAMPLE)}>예시 불러오기 (배터리 냉각)</Button>
-              </div>
-
-              {!intake && (
-                <div className="mt-8 border-t pt-6" style={{ borderColor: "var(--hairline)" }}>
-                  <div className="mb-3 font-mono text-[11px] font-bold tracking-widest" style={{ color: "var(--ink-mute)" }}>
-                    정리하면 이렇게 나옵니다
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    {[
-                      ["기술 구성 초안", "C1 · C2 · C3", "발명을 이루는 핵심 구성을 3~5개로 나눕니다."],
-                      ["빠진 항목", "실험 수치 · 도면", "출원 검토에 필요한데 메모에 없는 정보를 짚습니다."],
-                      ["공개 전 출원 알림", "D-day", "공개 예정일을 넣으면 출원 기한을 계속 알려줍니다."],
-                    ].map(([t, big, d], i) => (
-                      <div key={t} className="lp-frame p-4">
-                        <div className="bg-white p-4 shadow-[0_18px_28px_-22px_rgba(0,0,0,.5)]">
-                          <div className="text-[11px] font-bold" style={{ color: "var(--ink-soft)" }}>{t}</div>
-                          <div
-                            className="mt-1 font-[family-name:var(--font-display)] text-[22px] font-extrabold leading-tight"
-                            style={{ color: i === 1 ? "var(--crimson)" : "var(--ink)" }}
-                          >
-                            {big}
-                          </div>
-                          <p className="mt-2 text-[12px] leading-snug" style={{ color: "var(--ink-soft)" }}>{d}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <StepTitle n={1} title="발명 접수" sub="발명신고서 항목대로 적거나, 연구원 메모를 '발명의 구성'에 그대로 붙여넣으세요. InPro가 기술 구성을 뽑고 빠진 항목을 짚습니다." />
+              <IntakeForm
+                form={form}
+                onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+                stage={stage}
+                onStage={setStage}
+                discDate={discDate}
+                discType={discType}
+                onDiscDate={setDiscDate}
+                onDiscType={setDiscType}
+                caseNo={caseNo}
+                busy={busy === "intake"}
+                onSubmit={doIntake}
+                submitted={!!intake}
+                onFillExample={() => {
+                  setForm(EXAMPLE_FORM);
+                  setStage("상세설계");
+                  const d = new Date();
+                  d.setDate(d.getDate() + 21);
+                  setDiscType("학회·전시");
+                  setDiscDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+                }}
+              />
 
               {intake && (
-                <div className="mt-6 grid gap-5 md:grid-cols-2">
+                <div className="mt-10 grid gap-5 border-t pt-8 md:grid-cols-2" style={{ borderColor: "var(--hairline)" }}>
                   <div>
                     <h3 className="mb-2 text-sm font-extrabold">기술 구성 초안 <Tag>AI 제안</Tag></h3>
                     <p className="mb-3 text-[13px]" style={{ color: "var(--ink-soft)" }}>{intake.field} · {intake.problem}</p>
@@ -525,27 +487,110 @@ export function Workspace() {
           {/* STEP 2 */}
           {step === 2 && intake && (
             <Card>
-              <StepTitle n={2} title="기술 이해·보완" sub="조사 전에 발명자에게 핵심과 변형 가능성을 확인합니다. 조사 중 새 선행기술이 나오면 여기로 돌아와 다시 묻습니다." />
-              <ol className="mb-4 space-y-3">
-                {questions.map((q, i) => (
-                  <li key={q}>
-                    <div className="mb-1 text-[13.5px] font-bold">Q{i + 1}. {q}</div>
-                    <textarea
-                      rows={2}
-                      value={answers[i] ?? ""}
-                      onChange={(e) => setAnswers((a) => a.map((x, j) => (j === i ? e.target.value : x)))}
-                      placeholder="연구원 답변"
-                      className={`w-full p-2.5 text-[13px] ${inputCls}`}
-                      style={{ borderColor: "var(--hairline)", background: "#fff" }}
-                    />
-                  </li>
-                ))}
-              </ol>
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={doRefine} loading={busy === "refine"} disabled={!answersText}>
-                  {rows.length ? "답변 반영해 비교표 다시 만들기" : "답변 반영하고 조사로 →"}
-                </Button>
-                <Button variant="ghost" onClick={() => go(3)}>답변 없이 조사로 →</Button>
+              <StepTitle
+                n={2}
+                title="기술 이해·보완"
+                sub="빠진 항목을 연구원이 바로 답할 수 있는 질문으로 바꿨습니다. 한 번에 보내고, 받은 답을 넣으면 기술 구성을 다시 정리합니다."
+              />
+              <div className="grid gap-8 lg:grid-cols-[1fr_300px]">
+                <div className="min-w-0">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="font-[family-name:var(--font-display)] text-[12px] font-bold uppercase tracking-[.12em]" style={{ color: "var(--ink-soft)" }}>
+                        보완 질문
+                      </span>
+                      <span className="text-[12px] font-bold" style={{ color: "var(--crimson)" }}>
+                        답변 {answers.filter((x) => x.trim()).length} / {questions.length}
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-40" style={{ background: "#e6e5e1" }}>
+                      <div
+                        className="h-full transition-all duration-300"
+                        style={{ width: `${questions.length ? (answers.filter((x) => x.trim()).length / questions.length) * 100 : 0}%`, background: "var(--crimson)" }}
+                      />
+                    </div>
+                  </div>
+
+                  <ol className="space-y-3">
+                    {questions.map((q, i) => {
+                      const answered = !!answers[i]?.trim();
+                      return (
+                        <li
+                          key={q}
+                          className="border bg-white transition"
+                          style={{ borderColor: answered ? "var(--crimson)" : "var(--rule)", boxShadow: answered ? "inset 3px 0 0 var(--crimson)" : "none" }}
+                        >
+                          <div className="flex items-start gap-3 px-4 pt-4">
+                            <span
+                              className="grid h-7 w-7 shrink-0 place-items-center font-[family-name:var(--font-display)] text-[13px] font-bold"
+                              style={answered ? { background: "var(--crimson)", color: "#fff" } : { background: "var(--paper)", color: "var(--ink)" }}
+                            >
+                              {answered ? "✓" : `Q${i + 1}`}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <label htmlFor={`answer-${i}`} className="block text-[14px] font-bold leading-snug">
+                                {q}
+                              </label>
+                              <div className="mt-1 text-[11.5px]" style={{ color: answered ? "var(--crimson)" : "var(--ink-mute)" }}>
+                                {answered ? "답변 완료" : requestSentAt ? "연구원 답변 대기" : "아직 보내지 않음"}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="px-4 pb-4 pt-3 pl-14">
+                            <textarea
+                              id={`answer-${i}`}
+                              rows={2}
+                              value={answers[i] ?? ""}
+                              onChange={(e) => setAnswers((a) => a.map((x, j) => (j === i ? e.target.value : x)))}
+                              placeholder="연구원 답변을 붙여넣으세요"
+                              className="w-full border px-3 py-2 text-[13.5px] leading-relaxed outline-none transition focus:border-[var(--crimson)]"
+                              style={{ borderColor: "var(--rule)", background: "var(--paper)" }}
+                            />
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+
+                  <div className="mt-6 flex flex-wrap items-center gap-3 border-t pt-5" style={{ borderColor: "var(--hairline)" }}>
+                    <Button arrow onClick={doRefine} loading={busy === "refine"} disabled={!answersText}>
+                      {rows.length ? "답변 반영해 비교표 다시 만들기" : "답변 반영하고 조사로"}
+                    </Button>
+                    <Button variant="ghost" onClick={() => go(3)}>
+                      답변 없이 조사로
+                    </Button>
+                  </div>
+                </div>
+
+                <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+                  <ResearcherRequest
+                    title={intake.title}
+                    caseNo={caseNo}
+                    inventor={form.inventor}
+                    dept={form.dept}
+                    questions={questions}
+                    sentAt={requestSentAt}
+                    onSent={(channel) => {
+                      setRequestSentAt(new Date().toISOString());
+                      log("담당자", `연구원에게 보완 질문 ${questions.length}개 발송 (${channel})`);
+                    }}
+                  />
+                  {intake.missing.length > 0 && (
+                    <div className="border p-4" style={{ borderColor: "var(--rule)" }}>
+                      <div className="mb-2 text-[11px] font-bold" style={{ color: "var(--ink-mute)" }}>
+                        질문의 근거가 된 빠진 항목
+                      </div>
+                      <ul className="space-y-1.5 text-[12.5px]">
+                        {intake.missing.map((m) => (
+                          <li key={m.item}>
+                            <b style={{ color: "var(--crimson)" }}>{m.item}</b>
+                            <span style={{ color: "var(--ink-soft)" }}> · {m.why}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </aside>
               </div>
             </Card>
           )}
@@ -840,7 +885,7 @@ export function Workspace() {
         </div>
 
         {/* SIDEBAR */}
-        <aside className="no-print space-y-4 lg:sticky lg:top-24 lg:self-start">
+        <aside className={`no-print space-y-4 lg:sticky lg:top-24 lg:self-start ${step <= 2 ? "hidden" : ""}`}>
           {disc && (
             <Card>
               <h3 className="mb-1 text-sm font-extrabold">공개 전 출원 알림</h3>
