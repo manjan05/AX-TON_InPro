@@ -10,7 +10,13 @@ export interface RawDoc {
   ipc?: string;
   usage?: string; // 용도: 가정용 / 산업용 / 차량용
   facet?: string; // 분류: 형상 / 소재 / 제조 / 기타
+  status?: string; // 법적 상태: 등록 / 공개 / 소멸 / 거절 / 취하 …
+  registrationNo?: string;
 }
+
+// 살아 있는 권리 = 등록 상태. 소멸·거절·취하·포기는 침해 위험이 없고, 공개(심사 중)는 따로 추적한다.
+export const isLive = (d: Pick<RawDoc, "status">) => d.status === "등록";
+export const hasStatus = (docs: RawDoc[]) => docs.some((d) => !!d.status);
 
 // 근거 확인과 AI 비교에 쓰는 원문: 초록 + 대표 청구항
 export function sourceText(d: Pick<RawDoc, "abstract" | "claims">): string {

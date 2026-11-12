@@ -36,7 +36,7 @@ export function parseCsv(text: string): string[][] {
 
 // 한글·영문 헤더 둘 다 받는다
 const ALIASES: Record<keyof RawDoc, string[]> = {
-  id: ["id", "출원번호", "등록번호", "번호"],
+  id: ["id", "출원번호", "번호"],
   title: ["title", "발명의명칭", "발명의 명칭", "명칭", "제목"],
   abstract: ["abstract", "요약", "초록"],
   applicant: ["applicant", "출원인", "권리자"],
@@ -46,6 +46,8 @@ const ALIASES: Record<keyof RawDoc, string[]> = {
   usage: ["usage", "용도"],
   facet: ["facet", "분류", "기술분류"],
   category: ["category"],
+  status: ["status", "법적상태", "법적 상태", "상태"],
+  registrationNo: ["registrationno", "등록번호"],
 };
 
 const norm = (s: string) => s.replace(/\s+/g, "").toLowerCase();
@@ -78,7 +80,7 @@ export function rowsToDocs(rows: string[][]): ImportReport {
       applicant: get("applicant"),
       registrationDate: get("registrationDate"),
     };
-    for (const k of ["claims", "ipc", "usage", "facet"] as const) {
+    for (const k of ["claims", "ipc", "usage", "facet", "status", "registrationNo"] as const) {
       const v = get(k);
       if (v) doc[k] = v;
     }
