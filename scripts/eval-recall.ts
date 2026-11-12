@@ -4,7 +4,7 @@
 // 용어 사전을 껐을 때와 켰을 때를 나란히 보여줘서, 사전이 검색을 얼마나 개선했는지 숫자로 확인한다.
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { funnel, type RawDoc } from "../lib/inpro/corpus";
+import { funnel, isLive, type RawDoc } from "../lib/inpro/corpus";
 import { rankDocs, recallAtK, type Glossary } from "../lib/inpro/scoring";
 
 interface EvalCase {
@@ -13,6 +13,7 @@ interface EvalCase {
   expected: string[]; // 전문가가 고른 특허 번호 (data/domains/air-filter.json의 id)
   usage?: string;
   facet?: string;
+  purpose?: "출원 검토" | "침해 위험"; // 침해 위험이면 살아 있는 등록 특허만 검색
 }
 
 const casesPath = resolve(process.argv[2] ?? "data/eval/air-filter-cases.json");
@@ -37,12 +38,13 @@ let sumGloss = 0;
 console.log(`정답지 ${ready.length}건 · 상위 ${k}건 기준 재현율\n`);
 for (const c of ready) {
   const unknown = c.expected.filter((id) => !ids.has(id));
-  const scope = funnel(corpus, "필터", c.usage, c.facet).docs;
+  const scoped = funnel(corpus, "필터", c.usage, c.facet).docs;
+  const scope = c.purpose === "침해 위험" ? scoped.filter(isLive) : scoped;
   const plain = recallAtK(rankDocs(scope, c.keywords, { limit: k }).map((d) => d.id), c.expected, k);
   const gloss = recallAtK(rankDocs(scope, c.keywords, { limit: k, glossary }).map((d) => d.id), c.expected, k);
   sumPlain += plain.recall;
   sumGloss += gloss.recall;
-  console.log(`■ ${c.name}`);
+  console.log(`■ ${c.name}${c.purpose ? ` · ${c.purpose}` : ""} (검색 대상 ${scope.length}건)`);
   console.log(`  용어 사전 없이 ${pct(plain.recall)}  →  용어 사전 사용 ${pct(gloss.recall)}`);
   if (gloss.missed.length) console.log(`  놓친 특허: ${gloss.missed.join(", ")}`);
   if (unknown.length) console.log(`  ⚠ 데이터에 없는 번호: ${unknown.join(", ")}`);

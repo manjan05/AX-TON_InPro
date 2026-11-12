@@ -3,7 +3,7 @@
 //  - 진보성: 여러 문헌을 합치면 우리 구성이 전부 나오는가, 어느 문헌에도 없는 구성은 무엇인가
 import { quoteExists } from "./evidence";
 import { sourceText } from "./corpus";
-import type { ComparisonRow, InventionComponent } from "./types";
+import type { ComparisonRow, InventionComponent, Purpose } from "./types";
 
 export type Presence = "있음" | "일부" | "없음" | "확인 필요";
 
@@ -26,9 +26,12 @@ export interface RawCell {
 export type RiskLevel = "높음" | "주의" | "낮음";
 
 export interface MatrixVerdict {
+  mode: Purpose;
   novelty: { level: RiskLevel; text: string };
   inventive: { level: RiskLevel; text: string };
   unique: string[]; // 어느 문헌에도 없는 구성 (핵심 차별점 후보)
+  // 침해 위험 모드: 우리 구성과 많이 겹치는 살아 있는 특허부터 클레임 차트로 확인할 순서
+  watch: { label: string; title: string; full: number; partial: number }[];
 }
 
 export interface MatrixDoc {
@@ -74,9 +77,45 @@ export function labelDocs(docs: { id: string; title: string }[]): MatrixDoc[] {
   return docs.map((d, i) => ({ id: d.id, title: d.title, label: `문헌 ${String.fromCharCode(65 + i)}` }));
 }
 
-export function computeVerdict(components: { id: string; name: string }[], docs: MatrixDoc[], cells: MatrixCell[]): MatrixVerdict {
+export function computeVerdict(
+  components: { id: string; name: string }[],
+  docs: MatrixDoc[],
+  cells: MatrixCell[],
+  purpose: Purpose = "출원 검토"
+): MatrixVerdict {
   const at = (c: string, d: string) => cells.find((x) => x.componentId === c && x.docId === d)?.presence ?? "확인 필요";
   const n = components.length;
+  const watch = docs
+    .map((d) => ({
+      label: d.label,
+      title: d.title,
+      full: components.filter((c) => at(c.id, d.id) === "있음").length,
+      partial: components.filter((c) => at(c.id, d.id) === "일부").length,
+    }))
+    .sort((a, b) => b.full - a.full || b.partial - a.partial);
+  const uniqueNames = components
+    .filter((c) => docs.every((d) => rank[at(c.id, d.id)] < rank["일부"]))
+    .map((c) => `${c.id} ${c.name}`);
+
+  if (purpose === "침해 위험") {
+    // 우리 구성이 상대 특허에 있다고 해서 침해는 아니다. 침해는 상대 독립항의 "모든" 구성요소가
+    // 우리 제품에 있어야 성립한다(구성요소 완비 원칙). 그래서 여기서는 확인 순서만 정한다.
+    const top = watch[0];
+    const overlap: MatrixVerdict["novelty"] = !top
+      ? { level: "낮음", text: "비교한 살아 있는 특허가 없습니다." }
+      : top.full === n
+        ? { level: "높음", text: `가장 많이 겹치는 ${top.label}: 우리 구성 ${n}개가 모두 나옵니다. 상대 청구항의 나머지 구성요소까지 우리 제품에 있는지 클레임 차트로 바로 확인하세요.` }
+        : top.full >= 1 && top.full + top.partial >= Math.max(1, n - 1)
+          ? { level: "주의", text: `가장 많이 겹치는 ${top.label}: 있음 ${top.full} · 일부 ${top.partial} / ${n}. 클레임 차트로 상대 독립항을 대조하세요.` }
+          : top.full === 0
+            ? { level: "낮음", text: `같은 구성이 그대로 나오는 살아 있는 특허는 없습니다. 비슷한 정도(일부)만 있습니다 (가장 많은 ${top.label}: 일부 ${top.partial} / ${n}).` }
+            : { level: "낮음", text: `가장 많이 겹치는 ${top.label}도 우리 구성 ${n}개 중 ${top.full}개만 나옵니다.` };
+    const next: MatrixVerdict["inventive"] = {
+      level: overlap.level === "낮음" ? "낮음" : "주의",
+      text: `확인 순서: ${watch.map((w) => `${w.label}(${w.full}/${n})`).join(" → ")}. 상대 독립항의 구성요소가 하나라도 우리 제품에 없으면 문언 침해는 아닙니다. 최종 판단은 변리사 감정으로.`,
+    };
+    return { mode: purpose, novelty: overlap, inventive: next, unique: uniqueNames, watch };
+  }
 
   // 신규성: 문헌 하나가 모든 구성을 '있음'으로 가진 경우
   let bestDoc: MatrixDoc | null = null;
@@ -111,7 +150,7 @@ export function computeVerdict(components: { id: string; name: string }[], docs:
   } else {
     inventive = { level: "낮음", text: `${unique.join(", ")}은(는) 고른 문헌 어디에도 없습니다. 진보성의 핵심 근거 후보입니다.` };
   }
-  return { novelty, inventive, unique };
+  return { mode: purpose, novelty, inventive, unique, watch };
 }
 
 // 모든 구성을 덮는 가장 적은 문헌 조합 (탐욕법)
@@ -144,9 +183,9 @@ export function rowsFromMatrix(m: Matrix, nextChecks: Record<string, string>, co
   });
 }
 
-export function buildMatrix(components: InventionComponent[], docs: SourceDoc[], raw: RawCell[]): Matrix {
+export function buildMatrix(components: InventionComponent[], docs: SourceDoc[], raw: RawCell[], purpose: Purpose = "출원 검토"): Matrix {
   const mdocs = labelDocs(docs);
   const comps = components.map((c) => ({ id: c.id, name: c.name }));
   const cells = verifyCells(raw, components, docs);
-  return { docs: mdocs, components: comps, cells, verdict: computeVerdict(comps, mdocs, cells) };
+  return { docs: mdocs, components: comps, cells, verdict: computeVerdict(comps, mdocs, cells, purpose) };
 }

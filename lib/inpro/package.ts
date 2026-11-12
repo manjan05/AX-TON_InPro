@@ -31,6 +31,7 @@ export interface HandoffInput {
   surveys: SurveyRecord[];
   exclusions?: { id: string; title: string; reason: string }[];
   matrix?: Matrix | null;
+  purpose?: string;
 }
 
 const SYM = { 있음: "●", 일부: "◐", 없음: "○", "확인 필요": "?" } as const;
@@ -41,9 +42,10 @@ export function matrixMarkdown(m: Matrix): string[] {
   const body = m.components.map(
     (c) => `| ${c.id} ${c.name} | ${m.docs.map((d) => SYM[m.cells.find((x) => x.componentId === c.id && x.docId === d.id)?.presence ?? "확인 필요"]).join(" | ")} |`
   );
+  const fto = m.verdict.mode === "침해 위험";
   return [
-    `- 신규성 위험 ${m.verdict.novelty.level}: ${m.verdict.novelty.text}`,
-    `- 진보성 위험 ${m.verdict.inventive.level}: ${m.verdict.inventive.text}`,
+    `- ${fto ? "겹침이 큰 특허" : "신규성 위험"} ${m.verdict.novelty.level}: ${m.verdict.novelty.text}`,
+    `- ${fto ? "클레임 차트 확인 순서" : "진보성 위험"} ${m.verdict.inventive.level}: ${m.verdict.inventive.text}`,
     "",
     head,
     sep,
@@ -74,6 +76,7 @@ export function buildHandoffMarkdown(input: HandoffInput): string {
     `# 변리사 전달자료: ${intake.title}`,
     "",
     `- 기술 분야: ${intake.field}`,
+    input.purpose ? `- 조사 목적: ${input.purpose}` : "",
     `- 사내 결정: ${input.decision} (승인: ${input.approver}, ${fmt(input.approvedAt)})`,
     input.decisionMemo ? `- 결정 메모: ${input.decisionMemo}` : "",
     disc && input.disclosure ? `- 공개 예정: ${input.disclosure.date} ${input.disclosure.type} (${disc.message})` : "",

@@ -64,3 +64,22 @@ describe("rowsFromMatrix and markdown", () => {
     expect(text).toContain("| C1 1차 주름 | ● | ? |");
   });
 });
+
+describe("computeVerdict in infringement-risk mode", () => {
+  it("orders live patents by overlap and points to a claim chart instead of declaring infringement", () => {
+    const v = computeVerdict(comps, md, [cell("C1", "B", "있음"), cell("C2", "B", "있음"), cell("C3", "B", "일부"), cell("C1", "A", "있음")], "침해 위험");
+    expect(v.mode).toBe("침해 위험");
+    expect(v.watch.map((w) => w.label)).toEqual(["문헌 B", "문헌 A"]);
+    expect(v.novelty.level).toBe("주의");
+    expect(v.novelty.text).toContain("클레임 차트");
+    expect(v.inventive.text).toContain("문언 침해는 아닙니다");
+  });
+});
+
+describe("infringement-risk wording", () => {
+  it("does not raise a warning when no live patent fully contains any component", () => {
+    const v = computeVerdict(comps, md, [cell("C1", "A", "일부"), cell("C2", "A", "일부"), cell("C3", "A", "없음")], "침해 위험");
+    expect(v.novelty.level).toBe("낮음");
+    expect(v.novelty.text).toContain("그대로 나오는 살아 있는 특허는 없습니다");
+  });
+});

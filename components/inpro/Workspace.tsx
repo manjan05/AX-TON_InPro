@@ -14,7 +14,7 @@ import {
   type ScopeRole,
 } from "@/lib/inpro/types";
 import { changedComponents } from "@/lib/inpro/evidence";
-import type { ExcludeReason } from "@/lib/inpro/types";
+import { PURPOSES, type ExcludeReason, type Purpose } from "@/lib/inpro/types";
 import { buildHandoffMarkdown, openQuestions, type CaseEvent, type SurveyRecord } from "@/lib/inpro/package";
 import { DISCLOSURE_TYPES, disclosureStatus } from "@/lib/inpro/disclosure";
 import { Button, Card, CompareTable, InProLogo, StepTitle, Tag } from "./ui";
@@ -74,6 +74,7 @@ export function Workspace() {
   const [excluded, setExcluded] = useState<Record<string, ExcludeReason>>({});
   const [askReason, setAskReason] = useState<Set<string>>(new Set());
   const [searchScope, setSearchScope] = useState<{ usage?: string; facet?: string } | null>(null);
+  const [purpose, setPurpose] = useState<Purpose>("출원 검토");
   const [rows, setRows] = useState<ComparisonRow[]>([]);
   const [matrix, setMatrix] = useState<Matrix | null>(null);
   const [confirmed, setConfirmed] = useState<Set<string>>(new Set());
@@ -165,7 +166,7 @@ export function Workspace() {
   }
 
   async function compareWith(components: IntakeResult["components"], docIds: string[]) {
-    return post<{ rows: ComparisonRow[]; matrix: Matrix }>("/api/inpro/compare", { components, docIds });
+    return post<{ rows: ComparisonRow[]; matrix: Matrix }>("/api/inpro/compare", { components, docIds, purpose });
   }
 
   // STEP 2: 발명자 인터뷰 답변으로 기술 이해를 갱신. 조사 후에 돌아오면 비교표도 다시 만든다.
@@ -198,7 +199,7 @@ export function Workspace() {
   // STEP 3
   async function doSearch() {
     const result = await run("search", () =>
-      post<SearchMeta & { docs: PriorDoc[]; log: SearchLog }>("/api/inpro/search", { keywords, ...searchScope, components: intake?.components })
+      post<SearchMeta & { docs: PriorDoc[]; log: SearchLog }>("/api/inpro/search", { keywords, ...searchScope, purpose, components: intake?.components })
     );
     if (!result) return;
     setDocs(result.docs);
@@ -224,6 +225,20 @@ export function Workspace() {
     const weak = result.rows.filter((r) => r.relation === "근거 부족").length;
     log("담당자", `문헌 ${selected.size}건 선택`);
     log("InPro AI", `비교표 생성, 근거 부족 ${weak}건 표시`);
+  }
+
+  function changePurpose(p: Purpose) {
+    if (p === purpose) return;
+    setPurpose(p);
+    if (docs.length || rows.length) {
+      setDocs([]);
+      setSearchMeta(null);
+      setRows([]);
+      setMatrix(null);
+      setConfirmed(new Set());
+      invalidateDownstream();
+      log("담당자", `조사 목적 변경: ${p} — 검색을 다시 실행하세요`);
+    }
   }
 
   function toggleDoc(d: PriorDoc) {
@@ -259,6 +274,7 @@ export function Workspace() {
 
   // STEP 4
   const reviewContext = [
+    `조사 목적: ${purpose}${purpose === "침해 위험" ? " (살아 있는 등록 특허만 비교함)" : " (소멸·거절 포함 모든 선행기술)"}`,
     `현재 개발 단계: ${stage}`,
     disclosure && disc ? `공개 예정: ${disclosure.type} ${disclosure.date} (${disc.days}일 남음)` : "",
     matrix ? `매트릭스 판정 — 신규성 위험 ${matrix.verdict.novelty.level}: ${matrix.verdict.novelty.text} / 진보성 위험 ${matrix.verdict.inventive.level}: ${matrix.verdict.inventive.text}` : "",
@@ -309,7 +325,7 @@ export function Workspace() {
     const result = await run("resurvey", async () => {
       const next = await post<IntakeResult>("/api/inpro/intake", { description: newDesc, answers: answersText });
       const kws = Array.from(new Set([...keywords, ...next.keywords]));
-      const found = await post<SearchMeta & { docs: PriorDoc[]; log: SearchLog }>("/api/inpro/search", { keywords: kws, ...searchScope, components: next.components });
+      const found = await post<SearchMeta & { docs: PriorDoc[]; log: SearchLog }>("/api/inpro/search", { keywords: kws, ...searchScope, purpose, components: next.components });
       const ids = Array.from(new Set([...selected, ...found.docs.slice(0, 2).map((d) => d.id)])).slice(0, 6);
       const cmp = await compareWith(next.components, ids);
       return { next, kws, found, ids, cmp };
@@ -364,6 +380,7 @@ export function Workspace() {
           disclosure,
           surveys,
           matrix,
+          purpose,
           exclusions: docs.filter((d) => excluded[d.id]).map((d) => ({ id: d.id, title: d.title, reason: excluded[d.id] })),
         }
       : null;
@@ -661,7 +678,43 @@ export function Workspace() {
           {step === 3 && intake && (
             <Card>
               <StepTitle n={3} title="선행기술 조사" sub="검색어를 확정하고, 비교할 문헌을 고르면 구성 요소별로 원문과 대조합니다. 원문에서 확인되지 않은 판단은 '근거 부족'으로 낮춥니다." />
-              <FunnelPanel scope={searchScope} onScope={setSearchScope} />
+                <div className="mb-6">
+                  <div className="mb-2 font-[family-name:var(--font-display)] text-[12px] font-bold uppercase tracking-[.12em]" style={{ color: "var(--ink-soft)" }}>
+                    조사 목적
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="조사 목적">
+                    {PURPOSES.map((p) => {
+                      const on = purpose === p;
+                      const info =
+                        p === "출원 검토"
+                          ? ["우리 발명이 특허를 받을 수 있나", "소멸·거절된 문헌까지 모든 선행기술과 비교합니다. 신규성·진보성을 봅니다."]
+                          : ["피해야 할 살아 있는 특허가 있나", "등록 특허만 비교합니다. 겹침이 큰 특허부터 클레임 차트로 확인할 순서를 정합니다."];
+                      return (
+                        <button
+                          key={p}
+                          type="button"
+                          role="radio"
+                          aria-checked={on}
+                          onClick={() => changePurpose(p)}
+                          className="flex flex-col gap-1 border bg-white p-4 text-left transition"
+                          style={on ? { borderColor: "var(--crimson)", boxShadow: "inset 0 0 0 1px var(--crimson)" } : { borderColor: "var(--rule)" }}
+                        >
+                          <span className="flex items-center gap-2 text-[15px] font-extrabold">
+                            <span className="grid h-4 w-4 place-items-center rounded-full border" style={{ borderColor: on ? "var(--crimson)" : "var(--rule)" }}>
+                              {on && <span className="h-2 w-2 rounded-full" style={{ background: "var(--crimson)" }} />}
+                            </span>
+                            {p}
+                          </span>
+                          <span className="text-[13px] font-bold">{info[0]}</span>
+                          <span className="text-[12px] leading-snug" style={{ color: "var(--ink-soft)" }}>
+                            {info[1]}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              <FunnelPanel scope={searchScope} onScope={setSearchScope} purpose={purpose} />
               <div className="mb-3 flex flex-wrap gap-2">
                 {keywords.map((k) => (
                   <span key={k} className="inline-flex items-center gap-1 px-3 py-1 text-[13px] font-bold" style={{ background: "var(--crimson-soft)", color: "var(--crimson)" }}>
@@ -1128,6 +1181,7 @@ export function Workspace() {
                             ["접수번호", caseNo ?? "-"],
                             ["기술 분야", handoff.intake.field],
                             ["개발 단계", stage],
+                            ["조사 목적", purpose],
                             ["발명자", [form.inventor, form.dept].filter(Boolean).join(" / ") || "-"],
                             ["승인", `${handoff.approver} · ${new Date(handoff.approvedAt).toLocaleDateString("ko-KR")}`],
                             ["공개 예정", disclosure ? `${disclosure.type} ${disclosure.date}` : "없음"],

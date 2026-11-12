@@ -2,8 +2,8 @@ import generalTech from "@/data/staging/general-tech.json";
 import patents from "@/data/patents.json";
 import airFilter from "@/data/domains/air-filter.json";
 import airFilterGlossary from "@/data/domains/air-filter-glossary.json";
-import type { InventionComponent, NearMiss, PriorDoc } from "./types";
-import { funnel, type FunnelResult, type RawDoc } from "./corpus";
+import type { InventionComponent, NearMiss, PriorDoc, Purpose } from "./types";
+import { funnel, hasStatus, isLive, type FunnelResult, type RawDoc } from "./corpus";
 import { countMatches, nearMisses, rankDocs, type Glossary } from "./scoring";
 
 export type { RawDoc };
@@ -21,9 +21,14 @@ export const DEFAULT_SCOPE = DOMAIN ? { usage: "가정용", facet: "형상" } : 
 // 분야 용어 사전: 같은 뜻 다른 말로도 찾는다 (예: 주름 = 플리츠 = 절곡)
 export const GLOSSARY: Glossary = (airFilterGlossary as { groups: Glossary }).groups;
 
-export function scopedCorpus(usage?: string, facet?: string): FunnelResult {
-  return funnel(CORPUS, DOMAIN ? DOMAIN.name : "데모 DB", DOMAIN ? usage : undefined, DOMAIN ? facet : undefined);
+export function scopedCorpus(usage?: string, facet?: string, purpose: Purpose = "출원 검토"): FunnelResult {
+  const f = funnel(CORPUS, DOMAIN ? DOMAIN.name : "데모 DB", DOMAIN ? usage : undefined, DOMAIN ? facet : undefined);
+  if (purpose !== "침해 위험" || !hasStatus(f.docs)) return f;
+  const live = f.docs.filter(isLive);
+  return { ...f, docs: live, stages: [...f.stages, { label: "살아 있는 권리", count: live.length }] };
 }
+
+export const STATUS_AVAILABLE = hasStatus(CORPUS);
 
 function dedupe(docs: RawDoc[]): RawDoc[] {
   const seen = new Set<string>();
@@ -50,10 +55,12 @@ export interface ExplainedSearch {
 // 선행조사 결과를 "어떻게 여기까지 좁혀졌나"와 함께 돌려준다
 export function explainedSearch(
   keywords: string[],
-  opts: { usage?: string; facet?: string; components?: InventionComponent[]; limit?: number } = {}
+  opts: { usage?: string; facet?: string; components?: InventionComponent[]; limit?: number; purpose?: Purpose } = {}
 ): ExplainedSearch {
   const limit = opts.limit ?? 10;
-  const f = scopedCorpus(opts.usage, opts.facet);
+  const purpose = opts.purpose ?? "출원 검토";
+  const base = scopedCorpus(opts.usage, opts.facet);
+  const f = scopedCorpus(opts.usage, opts.facet, purpose);
   const inScope = new Set(f.docs.map((d) => d.id));
   const ranked = rankDocs(f.docs, keywords, { limit: limit + 5, glossary: GLOSSARY, components: opts.components });
   const docs = ranked.slice(0, limit);
@@ -62,8 +69,17 @@ export function explainedSearch(
   const scopeNote = [opts.usage && `용도 ${opts.usage}`, opts.facet && `분류 ${opts.facet}`].filter(Boolean).join(" · ");
   const path = [
     { label: f.stages[0].label, count: f.stages[0].count, note: "조사 대상 데이터" },
-    ...(f.stages.length > 1
-      ? [{ label: "조사 범위 안", count: f.docs.length, note: `${scopeNote}만 남김 (범위 밖 ${f.stages[0].count - f.docs.length}건 제외)` }]
+    ...(base.stages.length > 1
+      ? [{ label: "조사 범위 안", count: base.docs.length, note: `${scopeNote}만 남김 (범위 밖 ${f.stages[0].count - base.docs.length}건 제외)` }]
+      : []),
+    ...(f.docs.length !== base.docs.length || (purpose === "침해 위험" && STATUS_AVAILABLE)
+      ? [
+          {
+            label: "살아 있는 권리",
+            count: f.docs.length,
+            note: `등록 특허만 남김 (소멸·거절·취하 ${base.docs.filter((d) => d.status && d.status !== "등록" && d.status !== "공개").length}건, 심사 중 ${base.docs.filter((d) => d.status === "공개").length}건 제외)`,
+          },
+        ]
       : []),
     { label: "검색어 일치", count: matched, note: `검색어·동의어가 하나도 안 나온 ${f.docs.length - matched}건 제외` },
     { label: `상위 ${limit}건`, count: docs.length, note: "제목·청구항 일치와 여러 검색어 동시 일치에 높은 점수" },

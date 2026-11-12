@@ -13,20 +13,28 @@ interface KeywordGroup {
   terms: { term: string; weight: number }[];
 }
 
+const isSynonym = (g: KeywordGroup, term: string) => (g.terms.find((t) => t.term === term)?.weight ?? 1) < 1;
+
 // 검색어마다 사전에서 같은 뜻 다른 말을 붙인다. 원래 검색어는 가중치 1, 동의어는 0.7.
+// 같은 뜻 묶음에 속하는 검색어 여러 개(예: 주름 필터·절곡·플리츠)는 하나의 개념으로 합친다.
+// 합치지 않으면 "절곡"이 많이 나오는 문헌이 검색어 개수만큼 점수를 여러 번 받는다.
 export function expandKeywords(keywords: string[], glossary: Glossary = []): KeywordGroup[] {
-  return keywords
-    .map((k) => k.trim())
-    .filter((k) => k.length >= 2)
-    .map((origin) => {
-      const terms = new Map<string, number>([[origin, 1]]);
-      for (const group of glossary) {
-        if (group.some((g) => origin.includes(g) || (g.length >= 2 && g.includes(origin)))) {
-          for (const g of group) if (!terms.has(g)) terms.set(g, SYNONYM_WEIGHT);
-        }
-      }
-      return { origin, terms: [...terms].map(([term, weight]) => ({ term, weight })) };
-    });
+  const concepts = new Map<string, { origins: string[]; terms: Map<string, number> }>();
+  for (const origin of keywords.map((k) => k.trim()).filter((k) => k.length >= 2)) {
+    const hits = glossary
+      .map((group, i) => ({ group, i }))
+      .filter(({ group }) => group.some((g) => origin.includes(g) || (g.length >= 2 && g.includes(origin))));
+    const key = hits.length ? `g${hits[0].i}` : `k:${origin}`;
+    const c = concepts.get(key) ?? { origins: [], terms: new Map<string, number>() };
+    if (!c.origins.includes(origin)) c.origins.push(origin);
+    c.terms.set(origin, 1);
+    for (const { group } of hits) for (const g of group) if (!c.terms.has(g)) c.terms.set(g, SYNONYM_WEIGHT);
+    concepts.set(key, c);
+  }
+  return [...concepts.values()].map((c) => ({
+    origin: c.origins.join(" / "),
+    terms: [...c.terms].map(([term, weight]) => ({ term, weight })),
+  }));
 }
 
 function countOccurrences(text: string, kw: string): number {
@@ -81,7 +89,14 @@ export function scoreGroupsDetailed(doc: RawDoc, groups: KeywordGroup[]) {
       const h = termHit(doc, t.term);
       const points = h.points * t.weight;
       if (points > 0 && (!best || points > best.points))
-        best = { origin: g.origin, term: t.term, points, fields: h.fields, ...(h.partialToken ? { partialToken: h.partialToken } : {}) };
+        best = {
+          origin: g.origin,
+          term: t.term,
+          points,
+          fields: h.fields,
+          ...(isSynonym(g, t.term) ? { viaSynonym: true } : {}),
+          ...(h.partialToken ? { partialToken: h.partialToken } : {}),
+        };
     }
     if (best) {
       details.push(best);
@@ -90,7 +105,7 @@ export function scoreGroupsDetailed(doc: RawDoc, groups: KeywordGroup[]) {
   }
   // 여러 검색어가 동시에 맞는 문헌을 우대한다
   const bonus = 1 + POINTS.bonusPerExtra * Math.max(0, details.length - 1);
-  const matched = details.map((d) => (d.term === d.origin ? d.origin : `${d.term}(=${d.origin})`) + (d.partialToken ? " · 부분" : ""));
+  const matched = details.map((d) => (d.viaSynonym ? `${d.term}(=${d.origin})` : d.term) + (d.partialToken ? " · 부분" : ""));
   return { score: raw * bonus, matched, details, bonus };
 }
 
@@ -183,7 +198,7 @@ export function nearMisses(corpus: RawDoc[], keywords: string[], opts: RankOptio
   const cutoff = all[limit - 1]?.score ?? 0;
   const items = all.slice(limit, limit + (opts.count ?? 5)).map((d, i) => {
     const n = d.details.length;
-    const onlySyn = d.details.every((x) => x.term !== x.origin);
+    const onlySyn = d.details.every((x) => x.viaSynonym);
     const where = Array.from(new Set(d.details.flatMap((x) => x.fields)));
     const reason =
       n === 1

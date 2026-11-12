@@ -86,6 +86,21 @@ export function DocCard({
             <span>{doc.applicant}</span>·<span>{doc.registrationDate}</span>·<span className="font-mono">{doc.id}</span>
             {doc.usage && <span>· {doc.usage}</span>}
             {doc.facet && <span>· {doc.facet}</span>}
+            {doc.status && (
+              <span
+                className="px-1.5 py-0.5 text-[10.5px] font-bold"
+                style={
+                  doc.status === "등록"
+                    ? { background: "var(--crimson)", color: "#fff" }
+                    : doc.status === "공개"
+                      ? { border: "1px solid var(--rule)", color: "var(--ink)" }
+                      : { background: "#ecebe7", color: "var(--ink-mute)", textDecoration: "line-through" }
+                }
+                title={doc.status === "등록" ? "살아 있는 권리" : doc.status === "공개" ? "심사 중" : "권리 없음 · 선행기술로만 의미"}
+              >
+                {doc.status}
+              </span>
+            )}
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {doc.matchedKeywords.map((k) => (
@@ -117,7 +132,7 @@ export function DocCard({
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="font-bold">
                       {d.term}
-                      {d.term !== d.origin && <span style={{ color: "var(--ink-mute)" }}> (=&nbsp;{d.origin}, 동의어 70%)</span>}
+                      {d.viaSynonym && <span style={{ color: "var(--ink-mute)" }}> (=&nbsp;{d.origin}, 동의어 70%)</span>}
                       {d.partialToken && <span style={{ color: "var(--ink-mute)" }}> (‘{d.partialToken}’만 일치, 점수 절반)</span>}
                     </span>
                     <span className="font-mono">+{d.points}</span>

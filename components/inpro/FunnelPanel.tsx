@@ -14,14 +14,16 @@ interface FunnelInfo {
 export function FunnelPanel({
   scope,
   onScope,
+  purpose,
 }: {
   scope: { usage?: string; facet?: string } | null;
   onScope: (s: { usage?: string; facet?: string }) => void;
+  purpose: string;
 }) {
   const [info, setInfo] = useState<FunnelInfo | null>(null);
 
   useEffect(() => {
-    const q = new URLSearchParams();
+    const q = new URLSearchParams({ purpose });
     if (scope) {
       q.set("usage", scope.usage ?? "");
       q.set("facet", scope.facet ?? "");
@@ -38,7 +40,7 @@ export function FunnelPanel({
     return () => {
       alive = false;
     };
-  }, [scope, onScope]);
+  }, [scope, onScope, purpose]);
 
   if (!info) return null;
   const max = info.stages[0]?.count || 1;

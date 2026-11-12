@@ -16,16 +16,22 @@ const RISK: Record<RiskLevel, React.CSSProperties> = {
 };
 
 export function MatrixVerdictCards({ m }: { m: Matrix }) {
-  const cards: [string, string, RiskLevel, string][] = [
-    ["신규성", "문헌 하나에 우리 구성이 전부 있는가", m.verdict.novelty.level, m.verdict.novelty.text],
-    ["진보성", "여러 문헌을 합치면 전부 나오는가", m.verdict.inventive.level, m.verdict.inventive.text],
-  ];
+  const fto = m.verdict.mode === "침해 위험";
+  const cards: [string, string, RiskLevel, string][] = fto
+    ? [
+        ["겹침이 큰 특허", "우리 구성이 살아 있는 특허에 얼마나 나오나", m.verdict.novelty.level, m.verdict.novelty.text],
+        ["클레임 차트 확인 순서", "상대 독립항의 모든 구성요소가 우리 제품에 있나", m.verdict.inventive.level, m.verdict.inventive.text],
+      ]
+    : [
+        ["신규성", "문헌 하나에 우리 구성이 전부 있는가", m.verdict.novelty.level, m.verdict.novelty.text],
+        ["진보성", "여러 문헌을 합치면 전부 나오는가", m.verdict.inventive.level, m.verdict.inventive.text],
+      ];
   return (
     <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr]">
       {cards.map(([title, q, level, text]) => (
         <div key={title} className="border bg-white p-4" style={{ borderColor: "var(--rule)" }}>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[13px] font-extrabold">{title} 위험</span>
+            <span className="text-[13px] font-extrabold">{fto ? title : `${title} 위험`}</span>
             <span className="px-2 py-0.5 text-[11px] font-bold" style={RISK[level]}>
               {level}
             </span>
@@ -37,8 +43,8 @@ export function MatrixVerdictCards({ m }: { m: Matrix }) {
         </div>
       ))}
       <div className="p-4 text-white" style={{ background: "var(--ink)" }}>
-        <div className="text-[13px] font-extrabold">핵심 차별 구성</div>
-        <div className="mt-0.5 text-[11px] opacity-70">어느 문헌에도 없는 구성</div>
+        <div className="text-[13px] font-extrabold">{fto ? "우리 제품만의 구성" : "핵심 차별 구성"}</div>
+        <div className="mt-0.5 text-[11px] opacity-70">{fto ? "비교한 살아 있는 특허 어디에도 없는 구성" : "어느 문헌에도 없는 구성"}</div>
         {m.verdict.unique.length ? (
           <ul className="mt-2 space-y-1 text-[13px] font-bold">
             {m.verdict.unique.map((u) => (

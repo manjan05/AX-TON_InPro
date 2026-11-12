@@ -31,6 +31,7 @@ export interface PriorDoc {
   claims?: string;
   usage?: string;
   facet?: string;
+  status?: string;
   score: number;
   matchedKeywords: string[];
   explain?: DocExplain;
@@ -45,6 +46,7 @@ export interface MatchDetail {
   points: number; // 이 검색어로 얻은 점수 (동의어 가중치 반영)
   fields: MatchField[];
   partialToken?: string; // 구(phrase)가 통째로는 없고 이 단어만 맞은 경우 (부분 일치, 점수 절반)
+  viaSynonym?: boolean; // 검색어가 아니라 용어 사전의 동의어로 걸린 경우 (점수 70%)
 }
 
 export interface DocExplain {
@@ -62,6 +64,10 @@ export interface NearMiss {
   score: number;
   reason: string;
 }
+
+// 조사 목적: 출원 검토(우리 발명이 특허를 받을 수 있나) vs 침해 위험(피해야 할 살아 있는 특허)
+export const PURPOSES = ["출원 검토", "침해 위험"] as const;
+export type Purpose = (typeof PURPOSES)[number];
 
 // 담당자가 후보에서 뺄 때 고르는 이유 (조사 기록·학습 데이터)
 export const EXCLUDE_REASONS = ["관련 없음", "이미 검토함", "중복", "기타"] as const;
