@@ -13,7 +13,7 @@ export function aiError(err: unknown) {
 }
 
 // 공개 데모 URL에서 큰 입력으로 AI 호출량을 낭비하지 못하게 크기를 제한한다
-export const LIMITS = { text: 6000, answers: 4000, keywords: 20, keyword: 40, components: 8, rows: 8 };
+export const LIMITS = { text: 15000, answers: 4000, keywords: 20, keyword: 40, components: 8, rows: 8 };
 
 export function tooLarge(fields: Record<string, string | unknown[] | undefined>): NextResponse | null {
   for (const [name, v] of Object.entries(fields)) {
@@ -38,7 +38,7 @@ export function tooLarge(fields: Record<string, string | unknown[] | undefined>)
   return null;
 }
 
-const MAX_BODY_BYTES = 48 * 1024;
+const MAX_BODY_BYTES = 72 * 1024;
 
 // 요청 전체 크기를 먼저 제한한다. 중첩된 필드(구성 요소 설명, 비교표 문장 등)까지 한 번에 막는다.
 export async function readJson<T>(req: Request): Promise<{ body: T } | { error: NextResponse }> {

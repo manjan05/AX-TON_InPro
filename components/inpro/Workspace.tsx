@@ -511,7 +511,7 @@ export function Workspace() {
           {/* STEP 1 */}
           {step === 1 && (
             <Card>
-              <StepTitle n={1} title="발명 접수" sub="발명신고서 항목대로 적거나, 연구원 메모를 '발명의 구성'에 그대로 붙여넣으세요. InPro가 기술 구성을 뽑고 빠진 항목을 짚습니다." />
+              <StepTitle n={1} title="발명 접수" sub="연구원이 가진 메모·보고서·PDF를 그대로 넣으세요. InPro가 기술 구성을 뽑고, 출원 체크리스트로 빠진 항목을 짚습니다." />
               <IntakeForm
                 form={form}
                 onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
