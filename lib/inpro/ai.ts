@@ -4,6 +4,7 @@ import { MODEL_ID } from "../ai-client";
 import type { IntakeResult, PriorDoc, ReviewDraft, ComparisonRow, InventionComponent, ScopeResult } from "./types";
 import type { RawCell } from "./matrix";
 import { GLOSSARY } from "./search";
+import { CHECKLIST, missingFrom, verifyChecklist, type ChecklistId } from "./checklist";
 
 const intakeSchema = z.object({
   title: z.string().describe("발명의 가칭, 20자 이내"),
@@ -12,10 +13,17 @@ const intakeSchema = z.object({
   components: z
     .array(z.object({ name: z.string(), description: z.string() }))
     .describe("발명을 이루는 핵심 구성 요소 3~5개"),
-  missing: z
-    .array(z.object({ item: z.string(), why: z.string() }))
-    .describe("출원 검토에 필요한데 자료에 없는 항목"),
-  questions: z.array(z.string()).describe("연구원에게 보낼 보완 질문 3개"),
+  checklist: z
+    .array(
+      z.object({
+        id: z.enum(CHECKLIST.map((c) => c.id) as [ChecklistId, ...ChecklistId[]]),
+        status: z.enum(["충족", "부족", "없음"]),
+        quote: z.string().describe("근거가 된 자료 속 문장을 글자 그대로 복사. 없음이면 빈 문자열"),
+        note: z.string().describe("부족이면 무엇이 모자란지 한 문장. 충족이면 빈 문자열"),
+      })
+    )
+    .describe("체크리스트 항목마다 하나씩"),
+  questions: z.array(z.string()).describe("충족이 아닌 체크리스트 항목을 채우기 위한 보완 질문, 항목당 하나, 최대 4개"),
   keywords: z.array(z.string()).describe("선행기술 검색용 한국어 키워드 6~10개. 동의어 포함, 각 2~6자"),
 });
 
@@ -27,10 +35,14 @@ export async function runIntake(description: string, answers?: string): Promise<
 
 규칙:
 - 자료에 있는 내용만 구성 요소로 쓴다. 추측한 내용을 사실처럼 쓰지 않는다.
-- 빠진 항목은 출원 검토에 실제로 필요한 것만 쓴다 (예: 제어 조건, 비교 실험, 도면 부호, 효과 수치).
-- 보완 질문은 연구원이 바로 답할 수 있게 구체적으로 쓴다.
-- 이미 보완 답변에서 해결된 항목은 빠진 항목과 질문에서 뺀다.
+- 아래 체크리스트 항목마다 자료(보완 답변 포함)를 보고 판정한다.
+  충족 = 자료에 구체적으로 있음, 부족 = 언급은 있지만 모자람(예: 수치 없이 "줄었다"), 없음 = 언급 없음.
+  충족·부족이면 근거 문장을 자료에서 글자 그대로 복사한다. 지어내지 않는다.
+- 보완 질문은 충족이 아닌 항목만, 연구원이 바로 답할 수 있게 구체적으로 쓴다.
 - 검색 키워드는 특허 문서에 실제로 쓰이는 말로 쓴다. 아래 분야 용어 사전에 관련된 말이 있으면 그 표현을 쓴다.
+
+[체크리스트]
+${CHECKLIST.map((c) => `${c.id}: ${c.name} — ${c.why}`).join("\n")}
 
 [분야 용어 사전 (같은 줄은 같은 뜻)]
 ${GLOSSARY.map((g) => g.join(" = ")).join("\n")}
@@ -39,8 +51,11 @@ ${GLOSSARY.map((g) => g.join(" = ")).join("\n")}
 ${description}
 ${answers ? `\n[연구원 보완 답변]\n${answers}` : ""}`,
   });
+  const checklist = verifyChecklist(output.checklist, `${description}\n${answers ?? ""}`);
   return {
     ...output,
+    checklist,
+    missing: missingFrom(checklist),
     components: output.components.slice(0, 6).map((c, i) => ({ id: `C${i + 1}`, ...c })),
     questions: output.questions.slice(0, 4),
     keywords: Array.from(new Set(output.keywords.map((k) => k.trim()).filter(Boolean))).slice(0, 12),
