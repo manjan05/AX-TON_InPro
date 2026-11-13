@@ -16,15 +16,46 @@ const RISK: Record<RiskLevel, React.CSSProperties> = {
 };
 
 export function MatrixVerdictCards({ m }: { m: Matrix }) {
-  const fto = m.verdict.mode === "침해 위험";
+  const v = m.verdict;
+  if (!v.fto) return <VerdictRow v={v} />;
+  const liveCount = m.docs.filter((d) => d.live).length;
+  return (
+    <div className="space-y-4">
+      <div>
+        <SectionLabel title="출원 검토" sub={`고른 문헌 ${m.docs.length}건 전부 (소멸·거절 포함)`} />
+        <VerdictRow v={v} />
+      </div>
+      <div>
+        <SectionLabel title="침해 위험" sub={`그중 등록 특허 ${liveCount}건만`} />
+        <VerdictRow v={v.fto} />
+      </div>
+    </div>
+  );
+}
+
+function SectionLabel({ title, sub }: { title: string; sub: string }) {
+  return (
+    <div className="mb-2 flex items-baseline gap-2">
+      <span className="font-[family-name:var(--font-display)] text-[12px] font-bold uppercase tracking-[.12em]" style={{ color: "var(--crimson)" }}>
+        {title}
+      </span>
+      <span className="text-[11px]" style={{ color: "var(--ink-mute)" }}>
+        {sub}
+      </span>
+    </div>
+  );
+}
+
+function VerdictRow({ v }: { v: Matrix["verdict"] }) {
+  const fto = v.mode === "침해 위험";
   const cards: [string, string, RiskLevel, string][] = fto
     ? [
-        ["겹침이 큰 특허", "우리 구성이 살아 있는 특허에 얼마나 나오나", m.verdict.novelty.level, m.verdict.novelty.text],
-        ["클레임 차트 확인 순서", "상대 독립항의 모든 구성요소가 우리 제품에 있나", m.verdict.inventive.level, m.verdict.inventive.text],
+        ["겹침이 큰 특허", "우리 구성이 살아 있는 특허에 얼마나 나오나", v.novelty.level, v.novelty.text],
+        ["클레임 차트 확인 순서", "상대 독립항의 모든 구성요소가 우리 제품에 있나", v.inventive.level, v.inventive.text],
       ]
     : [
-        ["신규성", "문헌 하나에 우리 구성이 전부 있는가", m.verdict.novelty.level, m.verdict.novelty.text],
-        ["진보성", "여러 문헌을 합치면 전부 나오는가", m.verdict.inventive.level, m.verdict.inventive.text],
+        ["신규성", "문헌 하나에 우리 구성이 전부 있는가", v.novelty.level, v.novelty.text],
+        ["진보성", "여러 문헌을 합치면 전부 나오는가", v.inventive.level, v.inventive.text],
       ];
   return (
     <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr]">
@@ -45,9 +76,9 @@ export function MatrixVerdictCards({ m }: { m: Matrix }) {
       <div className="p-4 text-white" style={{ background: "var(--ink)" }}>
         <div className="text-[13px] font-extrabold">{fto ? "우리 제품만의 구성" : "핵심 차별 구성"}</div>
         <div className="mt-0.5 text-[11px] opacity-70">{fto ? "비교한 살아 있는 특허 어디에도 없는 구성" : "어느 문헌에도 없는 구성"}</div>
-        {m.verdict.unique.length ? (
+        {v.unique.length ? (
           <ul className="mt-2 space-y-1 text-[13px] font-bold">
-            {m.verdict.unique.map((u) => (
+            {v.unique.map((u) => (
               <li key={u}>— {u}</li>
             ))}
           </ul>
@@ -79,6 +110,11 @@ export function MatrixView({ m, readOnly }: { m: Matrix; readOnly?: boolean }) {
                   <div className="font-[family-name:var(--font-display)] text-[13px] font-bold" style={{ color: "var(--crimson)" }}>
                     {d.label}
                   </div>
+                  {d.live && (
+                    <div className="mx-auto mb-0.5 w-fit px-1 text-[9.5px] font-bold" style={{ background: "#efe2e2", color: "var(--crimson)" }}>
+                      등록
+                    </div>
+                  )}
                   <div className="mx-auto line-clamp-2 max-w-[130px] text-[10.5px] font-normal leading-tight" style={{ color: "var(--ink-soft)" }}>
                     {d.title}
                   </div>

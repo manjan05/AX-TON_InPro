@@ -1,4 +1,5 @@
 // InPro 사건(발명 1건) 데이터 모델. 기획안 5장 "이용 흐름 6단계"를 그대로 따른다.
+import type { CheckResult } from "./checklist";
 
 export interface InventionComponent {
   id: string; // "C1", "C2" ...
@@ -16,7 +17,8 @@ export interface IntakeResult {
   field: string;
   problem: string;
   components: InventionComponent[];
-  missing: MissingItem[];
+  missing: MissingItem[]; // 체크리스트에서 '충족'이 아닌 항목
+  checklist: CheckResult[];
   questions: string[];
   keywords: string[];
 }
@@ -65,8 +67,8 @@ export interface NearMiss {
   reason: string;
 }
 
-// 조사 목적: 출원 검토(우리 발명이 특허를 받을 수 있나) vs 침해 위험(피해야 할 살아 있는 특허)
-export const PURPOSES = ["출원 검토", "침해 위험"] as const;
+// 조사 목적: 출원 검토(우리 발명이 특허를 받을 수 있나) · 침해 위험(피해야 할 살아 있는 특허) · 둘 다(한 번에 두 판정)
+export const PURPOSES = ["둘 다", "출원 검토", "침해 위험"] as const;
 export type Purpose = (typeof PURPOSES)[number];
 
 // 담당자가 후보에서 뺄 때 고르는 이유 (조사 기록·학습 데이터)

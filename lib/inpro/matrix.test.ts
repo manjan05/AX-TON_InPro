@@ -83,3 +83,18 @@ describe("infringement-risk wording", () => {
     expect(v.novelty.text).toContain("그대로 나오는 살아 있는 특허는 없습니다");
   });
 });
+
+describe("computeVerdict in both mode", () => {
+  it("judges patentability on every doc and infringement risk on live patents only", () => {
+    const docs = [
+      { id: "A", label: "문헌 A", title: "소멸 특허", live: false },
+      { id: "B", label: "문헌 B", title: "등록 특허", live: true },
+    ];
+    const v = computeVerdict(comps, docs, [cell("C1", "A", "있음"), cell("C2", "A", "있음"), cell("C3", "A", "있음"), cell("C1", "B", "일부")], "둘 다");
+    expect(v.mode).toBe("둘 다");
+    expect(v.novelty.level).toBe("높음");
+    expect(v.fto?.mode).toBe("침해 위험");
+    expect(v.fto?.watch.map((w) => w.label)).toEqual(["문헌 B"]);
+    expect(v.fto?.novelty.level).toBe("낮음");
+  });
+});

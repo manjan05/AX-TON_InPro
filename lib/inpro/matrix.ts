@@ -32,12 +32,15 @@ export interface MatrixVerdict {
   unique: string[]; // 어느 문헌에도 없는 구성 (핵심 차별점 후보)
   // 침해 위험 모드: 우리 구성과 많이 겹치는 살아 있는 특허부터 클레임 차트로 확인할 순서
   watch: { label: string; title: string; full: number; partial: number }[];
+  // 둘 다 모드: 고른 문헌 중 등록 특허만으로 낸 침해 위험 판정
+  fto?: MatrixVerdict;
 }
 
 export interface MatrixDoc {
   id: string;
   label: string; // 문헌 A, B, C…
   title: string;
+  live?: boolean; // 등록(살아 있는) 특허
 }
 
 export interface Matrix {
@@ -47,7 +50,7 @@ export interface Matrix {
   verdict: MatrixVerdict;
 }
 
-type SourceDoc = { id: string; title: string; abstract: string; claims?: string };
+type SourceDoc = { id: string; title: string; abstract: string; claims?: string; status?: string };
 
 // "있음"은 원문 인용이 확인될 때만 인정한다. 확인 안 되면 "확인 필요"로 낮춘다.
 export function verifyCells(raw: RawCell[], components: InventionComponent[], docs: SourceDoc[]): MatrixCell[] {
@@ -73,8 +76,8 @@ export function verifyCells(raw: RawCell[], components: InventionComponent[], do
 
 const rank: Record<Presence, number> = { 있음: 3, 일부: 2, "확인 필요": 1, 없음: 0 };
 
-export function labelDocs(docs: { id: string; title: string }[]): MatrixDoc[] {
-  return docs.map((d, i) => ({ id: d.id, title: d.title, label: `문헌 ${String.fromCharCode(65 + i)}` }));
+export function labelDocs(docs: { id: string; title: string; status?: string }[]): MatrixDoc[] {
+  return docs.map((d, i) => ({ id: d.id, title: d.title, label: `문헌 ${String.fromCharCode(65 + i)}`, live: d.status === "등록" }));
 }
 
 export function computeVerdict(
@@ -83,6 +86,12 @@ export function computeVerdict(
   cells: MatrixCell[],
   purpose: Purpose = "출원 검토"
 ): MatrixVerdict {
+  if (purpose === "둘 다") {
+    // 같은 매트릭스로 판정만 두 번: 출원 검토는 고른 문헌 전부, 침해 위험은 그중 등록 특허만
+    const app = computeVerdict(components, docs, cells, "출원 검토");
+    const fto = computeVerdict(components, docs.filter((d) => d.live), cells, "침해 위험");
+    return { ...app, mode: "둘 다", fto };
+  }
   const at = (c: string, d: string) => cells.find((x) => x.componentId === c && x.docId === d)?.presence ?? "확인 필요";
   const n = components.length;
   const watch = docs

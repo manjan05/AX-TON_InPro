@@ -42,16 +42,22 @@ export function matrixMarkdown(m: Matrix): string[] {
   const body = m.components.map(
     (c) => `| ${c.id} ${c.name} | ${m.docs.map((d) => SYM[m.cells.find((x) => x.componentId === c.id && x.docId === d.id)?.presence ?? "확인 필요"]).join(" | ")} |`
   );
-  const fto = m.verdict.mode === "침해 위험";
+  const v = m.verdict;
+  const lines = (x: Matrix["verdict"]) => {
+    const fto = x.mode === "침해 위험";
+    return [
+      `- ${fto ? "겹침이 큰 특허" : "신규성 위험"} ${x.novelty.level}: ${x.novelty.text}`,
+      `- ${fto ? "클레임 차트 확인 순서" : "진보성 위험"} ${x.inventive.level}: ${x.inventive.text}`,
+    ];
+  };
   return [
-    `- ${fto ? "겹침이 큰 특허" : "신규성 위험"} ${m.verdict.novelty.level}: ${m.verdict.novelty.text}`,
-    `- ${fto ? "클레임 차트 확인 순서" : "진보성 위험"} ${m.verdict.inventive.level}: ${m.verdict.inventive.text}`,
+    ...(v.fto ? ["[출원 검토 — 고른 문헌 전부]", ...lines(v), "[침해 위험 — 등록 특허만]", ...lines(v.fto)] : lines(v)),
     "",
     head,
     sep,
     ...body,
     "",
-    ...m.docs.map((d) => `- ${d.label}: ${d.title} (${d.id})`),
+    ...m.docs.map((d) => `- ${d.label}: ${d.title} (${d.id})${d.live ? " · 등록" : ""}`),
     "- ● 있음(원문 인용 확인) ◐ 일부 ○ 없음 ? 확인 필요",
     "",
   ];

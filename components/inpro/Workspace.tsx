@@ -25,6 +25,7 @@ import { DocCard, NearMissPanel, SearchPath, type SearchMeta } from "./SearchRes
 import { ResearcherRequest } from "./ResearcherRequest";
 import { DECISION_INFO, DocSection, EmptyAction, LevelMeter, MetricCard, splitAlternatives } from "./StepParts";
 import { EMPTY_FORM, EXAMPLE_FORM, IntakeForm, composeDescription, type IntakeFormState } from "./IntakeForm";
+import { ChecklistView } from "./ChecklistView";
 
 // 팀장 인터뷰 질문 2의 실제 발명 검토 흐름을 따른다
 const STEPS = ["발명 접수", "기술 이해·보완", "선행기술 조사", "특허성·사업성", "권리범위 설계", "출원 결정·전달"];
@@ -74,7 +75,7 @@ export function Workspace() {
   const [excluded, setExcluded] = useState<Record<string, ExcludeReason>>({});
   const [askReason, setAskReason] = useState<Set<string>>(new Set());
   const [searchScope, setSearchScope] = useState<{ usage?: string; facet?: string } | null>(null);
-  const [purpose, setPurpose] = useState<Purpose>("출원 검토");
+  const [purpose, setPurpose] = useState<Purpose>("둘 다");
   const [rows, setRows] = useState<ComparisonRow[]>([]);
   const [matrix, setMatrix] = useState<Matrix | null>(null);
   const [confirmed, setConfirmed] = useState<Set<string>>(new Set());
@@ -207,7 +208,11 @@ export function Workspace() {
     setExcluded({});
     setAskReason(new Set());
     setSearchLog(result.log);
-    setSelected(new Set(result.docs.slice(0, 4).map((d) => d.id)));
+    // 둘 다: 기본 선택에 등록 특허가 최소 2건은 들어가게 (침해 위험 판정이 비지 않도록)
+    const pick = result.docs.slice(0, 4);
+    const needLive = purpose === "둘 다" ? Math.max(0, 2 - pick.filter((d) => d.status === "등록").length) : 0;
+    const addLive = result.docs.filter((d) => d.status === "등록" && !pick.includes(d)).slice(0, needLive);
+    setSelected(new Set([...pick, ...addLive].map((d) => d.id)));
     log("담당자", `조사 범위 확정: 키워드 ${keywords.length}개`);
     log("InPro AI", `선행조사 실행, 후보 ${result.docs.length}건`);
   }
@@ -274,10 +279,11 @@ export function Workspace() {
 
   // STEP 4
   const reviewContext = [
-    `조사 목적: ${purpose}${purpose === "침해 위험" ? " (살아 있는 등록 특허만 비교함)" : " (소멸·거절 포함 모든 선행기술)"}`,
+    `조사 목적: ${purpose}${purpose === "침해 위험" ? " (살아 있는 등록 특허만 비교함)" : purpose === "둘 다" ? " (모든 선행기술로 출원 검토, 그중 등록 특허로 침해 위험)" : " (소멸·거절 포함 모든 선행기술)"}`,
     `현재 개발 단계: ${stage}`,
     disclosure && disc ? `공개 예정: ${disclosure.type} ${disclosure.date} (${disc.days}일 남음)` : "",
-    matrix ? `매트릭스 판정 — 신규성 위험 ${matrix.verdict.novelty.level}: ${matrix.verdict.novelty.text} / 진보성 위험 ${matrix.verdict.inventive.level}: ${matrix.verdict.inventive.text}` : "",
+    matrix ? `매트릭스 판정 — ${matrix.verdict.mode === "침해 위험" ? "겹침" : "신규성 위험"} ${matrix.verdict.novelty.level}: ${matrix.verdict.novelty.text} / ${matrix.verdict.mode === "침해 위험" ? "확인 순서" : "진보성 위험"} ${matrix.verdict.inventive.level}: ${matrix.verdict.inventive.text}` : "",
+    matrix?.verdict.fto ? `침해 위험 판정(등록 특허만) — 겹침 ${matrix.verdict.fto.novelty.level}: ${matrix.verdict.fto.novelty.text}` : "",
   ]
     .filter(Boolean)
     .join("\n");
@@ -545,15 +551,13 @@ export function Workspace() {
                     </ul>
                   </div>
                   <div>
-                    <h3 className="mb-2 text-sm font-extrabold">빠진 항목 <Tag tone="orange">{intake.missing.length}개</Tag></h3>
-                    <ul className="space-y-2">
-                      {intake.missing.map((m) => (
-                        <li key={m.item} className="p-3 text-[13px]" style={{ background: "#efe2e2" }}>
-                          <b style={{ color: "var(--crimson)" }}>{m.item}</b>
-                          <div style={{ color: "var(--ink-soft)" }}>{m.why}</div>
-                        </li>
-                      ))}
-                    </ul>
+                    <h3 className="mb-2 text-sm font-extrabold">
+                      출원 체크리스트 <Tag tone="orange">빠진 항목 {intake.missing.length}개</Tag>
+                    </h3>
+                    <p className="mb-2 text-[11.5px]" style={{ color: "var(--ink-mute)" }}>
+                      명세서에 꼭 필요한 {intake.checklist?.length ?? 8}개 항목. ‘충족’은 자료에서 근거 문장이 확인될 때만 표시합니다.
+                    </p>
+                    <ChecklistView items={intake.checklist ?? []} />
                   </div>
                   <div className="md:col-span-2">
                     <Button onClick={() => go(2)}>다음: 발명자 인터뷰 →</Button>
@@ -682,11 +686,13 @@ export function Workspace() {
                   <div className="mb-2 font-[family-name:var(--font-display)] text-[12px] font-bold uppercase tracking-[.12em]" style={{ color: "var(--ink-soft)" }}>
                     조사 목적
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="조사 목적">
+                  <div className="grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label="조사 목적">
                     {PURPOSES.map((p) => {
                       const on = purpose === p;
                       const info =
-                        p === "출원 검토"
+                        p === "둘 다"
+                          ? ["한 번 조사로 두 판정을 봅니다", "모든 선행기술로 신규성·진보성을, 그중 등록 특허로 침해 위험을 봅니다. 등록 특허 상위 5건은 따로 보충합니다."]
+                          : p === "출원 검토"
                           ? ["우리 발명이 특허를 받을 수 있나", "소멸·거절된 문헌까지 모든 선행기술과 비교합니다. 신규성·진보성을 봅니다."]
                           : ["피해야 할 살아 있는 특허가 있나", "등록 특허만 비교합니다. 겹침이 큰 특허부터 클레임 차트로 확인할 순서를 정합니다."];
                       return (
@@ -704,6 +710,11 @@ export function Workspace() {
                               {on && <span className="h-2 w-2 rounded-full" style={{ background: "var(--crimson)" }} />}
                             </span>
                             {p}
+                            {p === "둘 다" && (
+                              <span className="px-1.5 py-0.5 text-[10px] font-bold" style={{ background: "var(--crimson-soft)", color: "var(--crimson)" }}>
+                                기본
+                              </span>
+                            )}
                           </span>
                           <span className="text-[13px] font-bold">{info[0]}</span>
                           <span className="text-[12px] leading-snug" style={{ color: "var(--ink-soft)" }}>

@@ -13,7 +13,7 @@ interface EvalCase {
   expected: string[]; // 전문가가 고른 특허 번호 (data/domains/air-filter.json의 id)
   usage?: string;
   facet?: string;
-  purpose?: "출원 검토" | "침해 위험"; // 침해 위험이면 살아 있는 등록 특허만 검색
+  purpose?: "둘 다" | "출원 검토" | "침해 위험"; // 침해 위험이면 살아 있는 등록 특허만, 둘 다면 전체 + 등록 특허 보충
 }
 
 const casesPath = resolve(process.argv[2] ?? "data/eval/air-filter-cases.json");
@@ -40,8 +40,14 @@ for (const c of ready) {
   const unknown = c.expected.filter((id) => !ids.has(id));
   const scoped = funnel(corpus, "필터", c.usage, c.facet).docs;
   const scope = c.purpose === "침해 위험" ? scoped.filter(isLive) : scoped;
-  const plain = recallAtK(rankDocs(scope, c.keywords, { limit: k }).map((d) => d.id), c.expected, k);
-  const gloss = recallAtK(rankDocs(scope, c.keywords, { limit: k, glossary }).map((d) => d.id), c.expected, k);
+  const run = (g?: Glossary) => {
+    const top = rankDocs(scope, c.keywords, { limit: k, glossary: g });
+    if (c.purpose !== "둘 다" || top.filter((d) => d.status === "등록").length >= 5) return top.map((d) => d.id);
+    const extra = rankDocs(scope.filter(isLive), c.keywords, { limit: k, glossary: g }).filter((d) => !top.some((x) => x.id === d.id)).slice(0, 5);
+    return [...top, ...extra].map((d) => d.id);
+  };
+  const plain = recallAtK(run(), c.expected, k + 5);
+  const gloss = recallAtK(run(glossary), c.expected, k + 5);
   sumPlain += plain.recall;
   sumGloss += gloss.recall;
   console.log(`■ ${c.name}${c.purpose ? ` · ${c.purpose}` : ""} (검색 대상 ${scope.length}건)`);

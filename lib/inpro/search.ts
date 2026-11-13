@@ -64,6 +64,15 @@ export function explainedSearch(
   const inScope = new Set(f.docs.map((d) => d.id));
   const ranked = rankDocs(f.docs, keywords, { limit: limit + 5, glossary: GLOSSARY, components: opts.components });
   const docs = ranked.slice(0, limit);
+  // 둘 다: 전체 상위 10건은 오래된 소멸 특허가 많이 차지할 수 있다. 살아 있는 특허 상위를 따로 보충한다.
+  const LIVE_EXTRA = 5;
+  const liveInTop = docs.filter((d) => d.status === "등록").length;
+  const liveExtra =
+    purpose === "둘 다" && STATUS_AVAILABLE && liveInTop < 5
+      ? rankDocs(f.docs.filter(isLive), keywords, { limit: limit, glossary: GLOSSARY, components: opts.components })
+          .filter((d) => !docs.some((x) => x.id === d.id))
+          .slice(0, LIVE_EXTRA)
+      : [];
   const matched = countMatches(f.docs, keywords, GLOSSARY);
 
   const scopeNote = [opts.usage && `용도 ${opts.usage}`, opts.facet && `분류 ${opts.facet}`].filter(Boolean).join(" · ");
@@ -83,13 +92,17 @@ export function explainedSearch(
       : []),
     { label: "검색어 일치", count: matched, note: `검색어·동의어가 하나도 안 나온 ${f.docs.length - matched}건 제외` },
     { label: `상위 ${limit}건`, count: docs.length, note: "제목·청구항 일치와 여러 검색어 동시 일치에 높은 점수" },
+    ...(liveExtra.length
+      ? [{ label: "살아 있는 특허 보충", count: liveExtra.length, note: `상위 ${limit}건 중 등록 특허가 ${liveInTop}건뿐이라, 침해 위험 판정용으로 등록 특허 상위 ${liveExtra.length}건을 더함` }]
+      : []),
   ];
 
   const outsideDocs = DOMAIN && f.docs.length < CORPUS.length ? CORPUS.filter((d) => !inScope.has(d.id)) : [];
   const outside = outsideDocs.length ? rankDocs(outsideDocs, keywords, { limit: 3, glossary: GLOSSARY }) : [];
+  const extraIds = new Set(liveExtra.map((d) => d.id));
   return {
-    docs,
-    extra: ranked.slice(limit),
+    docs: [...docs, ...liveExtra],
+    extra: ranked.slice(limit).filter((d) => !extraIds.has(d.id)),
     path,
     nearMiss: nearMisses(f.docs, keywords, { limit, glossary: GLOSSARY, count: 5 }),
     outOfScope: {
