@@ -26,6 +26,7 @@ import { ResearcherRequest } from "./ResearcherRequest";
 import { DECISION_INFO, DocSection, EmptyAction, LevelMeter, MetricCard, splitAlternatives } from "./StepParts";
 import { EMPTY_FORM, EXAMPLE_FORM, IntakeForm, composeDescription, type IntakeFormState } from "./IntakeForm";
 import { ChecklistView } from "./ChecklistView";
+import { WatchPanel, type WatchInfo } from "./WatchPanel";
 
 // 팀장 인터뷰 질문 2의 실제 발명 검토 흐름을 따른다
 const STEPS = ["발명 접수", "기술 이해·보완", "선행기술 조사", "특허성·사업성", "권리범위 설계", "출원 결정·전달"];
@@ -70,6 +71,7 @@ export function Workspace() {
   const [newKeyword, setNewKeyword] = useState("");
   const [docs, setDocs] = useState<PriorDoc[]>([]);
   const [searchLog, setSearchLog] = useState<SearchLog | null>(null);
+  const [watch, setWatch] = useState<WatchInfo | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [searchMeta, setSearchMeta] = useState<SearchMeta | null>(null);
   const [excluded, setExcluded] = useState<Record<string, ExcludeReason>>({});
@@ -1313,6 +1315,25 @@ export function Workspace() {
                       </div>
                     </DocSection>
                   </article>
+                  <WatchPanel
+                    watch={watch}
+                    components={handoff.intake.components.map((c) => ({ id: c.id, name: c.name }))}
+                    keywords={keywords}
+                    scope={[searchScope?.usage, searchScope?.facet].filter(Boolean).join(" · ") || "전체 분야"}
+                    onRegister={() => {
+                      setWatch({
+                        at: new Date().toISOString(),
+                        components: handoff.intake.components.map((c) => ({ id: c.id, name: c.name })),
+                        keywords,
+                        scope: [searchScope?.usage, searchScope?.facet].filter(Boolean).join(" · ") || "전체 분야",
+                      });
+                      log("담당자", `새 특허 감시 등록: 구성 ${handoff.intake.components.length}개, 검색어 ${keywords.length}개`);
+                    }}
+                    onCancel={() => {
+                      setWatch(null);
+                      log("담당자", "새 특허 감시 해제");
+                    }}
+                  />
                 </>
               )}
             </Card>
