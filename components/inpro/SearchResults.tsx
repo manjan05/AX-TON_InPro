@@ -70,7 +70,6 @@ export function DocCard({
 }) {
   const [open, setOpen] = useState(rank <= 3);
   const ex = doc.explain;
-  const maxPts = Math.max(1, ...(ex?.details.map((d) => d.points) ?? [1]));
   return (
     <li className="border bg-white transition" style={{ borderColor: selected ? "var(--crimson)" : "var(--rule)", boxShadow: selected ? "inset 3px 0 0 var(--crimson)" : "none" }}>
       <div className="flex items-start gap-3 p-4">
@@ -111,11 +110,8 @@ export function DocCard({
           </div>
         </div>
         <div className="shrink-0 text-right">
-          <div className="font-[family-name:var(--font-display)] text-[22px] font-bold leading-none" style={{ color: "var(--crimson)" }}>
-            {doc.score}
-          </div>
-          <button type="button" onClick={() => setOpen((o) => !o)} className="mt-1 text-[11px] font-bold underline underline-offset-2" style={{ color: "var(--ink-soft)" }} aria-expanded={open}>
-            {open ? "근거 접기" : "왜 선정?"}
+          <button type="button" onClick={() => setOpen((o) => !o)} className="text-[11px] font-bold underline underline-offset-2" style={{ color: "var(--ink-soft)" }} aria-expanded={open}>
+            {open ? "접기" : "왜 찾았나?"}
           </button>
         </div>
       </div>
@@ -124,35 +120,22 @@ export function DocCard({
         <div className="grid gap-4 border-t px-4 py-4 md:grid-cols-[1fr_1.2fr]" style={{ borderColor: "#eceae6", background: "#fcfbfa" }}>
           <div>
             <div className="mb-2 text-[11px] font-bold" style={{ color: "var(--ink-mute)" }}>
-              점수 근거
+              겹치는 검색어
             </div>
-            <ul className="space-y-2">
+            <ul className="space-y-1.5">
               {ex.details.map((d) => (
-                <li key={d.origin} className="text-[12px]">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="font-bold">
-                      {d.term}
-                      {d.viaSynonym && <span style={{ color: "var(--ink-mute)" }}> (=&nbsp;{d.origin}, 동의어 70%)</span>}
-                      {d.partialToken && <span style={{ color: "var(--ink-mute)" }}> (‘{d.partialToken}’만 일치, 점수 절반)</span>}
-                    </span>
-                    <span className="font-mono">+{d.points}</span>
-                  </div>
-                  <div className="mt-1 flex items-center gap-2">
-                    <div className="h-1.5 flex-1" style={{ background: "#e6e5e1" }}>
-                      <div className="h-full" style={{ width: `${(d.points / maxPts) * 100}%`, background: "var(--crimson)" }} />
-                    </div>
-                    <span className="text-[10.5px]" style={{ color: "var(--ink-soft)" }}>
-                      {d.fields.join(" · ")}
-                    </span>
-                  </div>
+                <li key={d.origin} className="flex flex-wrap items-baseline gap-x-2 text-[12px]">
+                  <span className="font-bold">
+                    {d.term}
+                    {d.viaSynonym && <span style={{ color: "var(--ink-mute)" }}> (=&nbsp;{d.origin})</span>}
+                    {d.partialToken && <span style={{ color: "var(--ink-mute)" }}> (‘{d.partialToken}’만 일치)</span>}
+                  </span>
+                  <span className="text-[11px]" style={{ color: "var(--ink-soft)" }}>
+                    {d.fields.join(" · ")}에 나옴
+                  </span>
                 </li>
               ))}
             </ul>
-            {ex.bonus > 1 && (
-              <div className="mt-2 text-[11.5px]" style={{ color: "var(--ink-soft)" }}>
-                검색어 {ex.details.length}개 동시 일치 <b className="font-mono">×{ex.bonus}</b>
-              </div>
-            )}
           </div>
           <div>
             {ex.snippet && (

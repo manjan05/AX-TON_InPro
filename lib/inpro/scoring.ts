@@ -195,7 +195,6 @@ export function rankDocs(corpus: RawDoc[], keywords: string[], opts: RankOptions
 export function nearMisses(corpus: RawDoc[], keywords: string[], opts: RankOptions & { count?: number } = {}): { total: number; items: NearMiss[] } {
   const all = scoredAll(corpus, keywords, opts.glossary);
   const limit = opts.limit ?? 10;
-  const cutoff = all[limit - 1]?.score ?? 0;
   const items = all.slice(limit, limit + (opts.count ?? 5)).map((d, i) => {
     const n = d.details.length;
     const onlySyn = d.details.every((x) => x.viaSynonym);
@@ -207,7 +206,7 @@ export function nearMisses(corpus: RawDoc[], keywords: string[], opts: RankOptio
           ? "동의어로만 일치"
           : !where.includes("제목") && !where.includes("청구항")
             ? "요약에만 등장, 제목·청구항에는 없음"
-            : `점수 ${round(d.score)}점, 상위 ${limit}위 기준 ${round(cutoff)}점에 못 미침`;
+            : `겹치는 검색어 ${n}개 (${d.matched.slice(0, 3).join(", ")}), 상위 ${limit}건보다 덜 겹침`;
     return { id: d.doc.id, title: d.doc.title, applicant: d.doc.applicant, rank: limit + i + 1, score: round(d.score), reason };
   });
   return { total: Math.max(0, all.length - limit), items };

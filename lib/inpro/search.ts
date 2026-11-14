@@ -91,7 +91,7 @@ export function explainedSearch(
         ]
       : []),
     { label: "검색어 일치", count: matched, note: `검색어·동의어가 하나도 안 나온 ${f.docs.length - matched}건 제외` },
-    { label: `상위 ${limit}건`, count: docs.length, note: "제목·청구항 일치와 여러 검색어 동시 일치에 높은 점수" },
+    { label: `상위 ${limit}건`, count: docs.length, note: "검색어가 제목·청구항에 많이, 여러 개 함께 나오는 순" },
     ...(liveExtra.length
       ? [{ label: "살아 있는 특허 보충", count: liveExtra.length, note: `상위 ${limit}건 중 등록 특허가 ${liveInTop}건뿐이라, 침해 위험 판정용으로 등록 특허 상위 ${liveExtra.length}건을 더함` }]
       : []),

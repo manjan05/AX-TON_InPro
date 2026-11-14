@@ -759,9 +759,6 @@ export function Workspace() {
                     <span className="font-[family-name:var(--font-display)] text-[12px] font-bold uppercase tracking-[.12em]" style={{ color: "var(--ink-soft)" }}>
                       후보 문헌 · 체크한 문헌으로 비교표를 만듭니다 (최대 6건)
                     </span>
-                    <span className="text-[11.5px]" style={{ color: "var(--ink-mute)" }}>
-                      점수 = 제목 +3 · 요약 최대 +3 · 청구항 최대 +2, 동의어는 70%, 여러 검색어 동시 일치 가산
-                    </span>
                   </div>
                   <ol className="space-y-2.5">
                     {docs.map((d, i) => (

@@ -110,14 +110,6 @@ export function IntakeForm({
   onFillExample?: () => void;
 }) {
   const disc = discDate ? disclosureStatus({ date: discDate, type: discType }) : null;
-  const checks: [string, boolean, boolean][] = [
-    ["발명 명칭", !!form.title.trim(), true],
-    ["발명 자료 (20자 이상)", form.material.trim().length >= 20, true],
-    ["적용 제품", !!form.product.trim(), false],
-    ["발명자", !!form.inventor.trim(), false],
-  ];
-  const done = checks.filter(([, ok]) => ok).length;
-  const pct = Math.round((done / checks.length) * 100);
   const text = (k: keyof IntakeFormState) => ({
     id: `intake-${k}`,
     value: form[k],
@@ -207,34 +199,7 @@ export function IntakeForm({
               {caseNo ?? "접수 시 발번"}
             </div>
           </div>
-          <div className="px-4 py-4">
-            <div className="mb-1.5 flex items-baseline justify-between">
-              <span className="text-[13px] font-bold">작성 완성도</span>
-              <span className="font-[family-name:var(--font-display)] text-[22px] font-bold" style={{ color: "var(--crimson)" }}>
-                {pct}%
-              </span>
-            </div>
-            <div className="mb-4 h-1.5" style={{ background: "#e6e5e1" }}>
-              <div className="h-full transition-all duration-300" style={{ width: `${pct}%`, background: "var(--crimson)" }} />
-            </div>
-            <ul className="space-y-2 text-[12.5px]">
-              {checks.map(([label, ok, req]) => (
-                <li key={label} className="flex items-center gap-2">
-                  <span
-                    className="grid h-4 w-4 shrink-0 place-items-center text-[10px] font-bold"
-                    style={ok ? { background: "var(--crimson)", color: "#fff" } : { border: "1px solid var(--rule)", color: "transparent" }}
-                  >
-                    ✓
-                  </span>
-                  <span style={{ color: ok ? "var(--ink)" : "var(--ink-soft)" }}>
-                    {label}
-                    {req && <span style={{ color: "var(--crimson)" }}> *</span>}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="border-t px-4 py-4" style={{ borderColor: "var(--rule)" }}>
+          <div className="px-4 py-4" style={{ borderColor: "var(--rule)" }}>
             <Button arrow onClick={onSubmit} loading={busy} disabled={!isSubmittable(form)}>
               {submitted ? "다시 검토 요청" : "AI 검토 요청"}
             </Button>
