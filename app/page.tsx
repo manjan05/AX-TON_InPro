@@ -26,10 +26,6 @@ export default function Landing() {
           <div className="pointer-events-none relative z-30 px-[var(--pad)] pt-4">
             <p className="lp-hero-sub mb-3">
               Intellectual Property, in progress.
-              <br />
-              차별점을 찾고, 경쟁사가 피하기 어려운 권리로.
-              <br />
-              발명자와 특허 담당자가 함께 설계합니다.
             </p>
             <h1 className="lp-hero-title">InPro</h1>
           </div>
@@ -58,7 +54,7 @@ export default function Landing() {
             Data &amp; Security
           </h2>
           <p className="mb-4 text-[15px] font-bold">미공개 발명을 다루는 서비스라, 데이터가 어디로 가는지 먼저 밝힙니다.</p>
-          <DataNotice defaultOpen />
+          <DataNotice />
         </section>
 
         {/* FOOTER */}

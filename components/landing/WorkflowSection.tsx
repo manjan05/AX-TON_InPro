@@ -363,8 +363,8 @@ export function WorkflowSection() {
       {/* 단계 밖에서 계속 도는 기능 */}
       <div className="grid border-t sm:grid-cols-2" style={{ borderColor: "var(--rule)" }}>
         <div className="flex gap-4 p-[var(--pad)] sm:border-r" style={{ borderColor: "var(--rule)" }}>
-          <span className="font-[family-name:var(--font-display)] text-3xl font-bold" style={{ color: "var(--crimson)" }}>
-            D-10
+          <span className="shrink-0 whitespace-nowrap font-[family-name:var(--font-display)] text-3xl font-bold" style={{ color: "var(--crimson)" }}>
+            D-DAY
           </span>
           <div>
             <p className="lp-label ink !mb-1">공개 전 출원 알림</p>
