@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runIntake } from "@/lib/inpro/ai";
 import { aiError, tooLarge, readJson } from "@/lib/inpro/route-utils";
+import { stripPersonal } from "@/lib/inpro/privacy";
 
 export async function POST(req: NextRequest) {
   const parsed = await readJson<{ description?: string; answers?: string }>(req);
@@ -12,7 +13,8 @@ export async function POST(req: NextRequest) {
   const big = tooLarge({ description, answers });
   if (big) return big;
   try {
-    return NextResponse.json(await runIntake(description, answers));
+    // 발명자 이름·소속은 AI 판단에 필요 없으므로 외부 AI로 보내지 않는다
+    return NextResponse.json(await runIntake(stripPersonal(description), answers));
   } catch (err) {
     return aiError(err);
   }

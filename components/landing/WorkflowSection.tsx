@@ -76,7 +76,7 @@ const STEPS: Step[] = [
   },
   {
     title: "선행기술 조사",
-    oneLine: "비슷한 특허를 찾아 구성 요소마다 비교합니다. 근거는 원문에서 그대로 인용하고, 확인 안 되면 '근거 부족'으로 표시합니다.",
+    oneLine: "비슷한 특허를 찾아 구성 요소마다 비교하고, 겹친 구성은 발명자에게 그 문헌 문장을 보여주며 다시 물어 차별점을 함께 찾습니다.",
     input: ["검색어 확정", "비교할 문헌 선택"],
     output: ["원문 인용이 붙은 비교표", "검색 조건 기록"],
     ai: "300건을 후보 몇 건으로 줄이고, 인용이 원문에 진짜 있는지 다시 확인합니다.",
@@ -130,7 +130,7 @@ const STEPS: Step[] = [
   },
   {
     title: "권리범위 설계",
-    oneLine: "“무엇을 출원할까”보다 “경쟁사가 피해 가기 어려운 권리”를 고민합니다. 지켜야 할 핵심을 정해 변리사와 논의합니다.",
+    oneLine: "경쟁사라면 어떻게 피할지 먼저 시도해 봅니다. 피할 수 없는 핵심과, 넓게 써야 할 대체 가능 구성을 나눠 변리사와 논의합니다.",
     input: ["검토서", "구성별 구분 조정"],
     output: ["핵심·대체 가능·부가 구분", "경쟁사 우회 수단과 난이도"],
     ai: "구성마다 경쟁사가 대신 쓸 수 있는 수단을 찾아 우회 난이도를 매깁니다.",
@@ -211,9 +211,9 @@ export function WorkflowSection() {
     <section id="workflow" className="lp-rule scroll-mt-4">
       <div className="flex flex-wrap items-end justify-between gap-4 px-[var(--pad)] pt-[var(--pad)]">
         <h2 className="lp-h-section">
-          One Case,
+          Find the Difference,
           <br />
-          Six Steps
+          Design the Right
         </h2>
       </div>
 

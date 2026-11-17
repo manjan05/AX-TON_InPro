@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import type { Matrix, MatrixCell, Presence, RiskLevel } from "@/lib/inpro/matrix";
+import { verdictLabels, type Matrix, type MatrixCell, type Presence, type RiskLevel } from "@/lib/inpro/matrix";
 
 const MARK: Record<Presence, { sym: string; label: string; style: React.CSSProperties }> = {
   있음: { sym: "●", label: "있음", style: { background: "var(--crimson)", color: "#fff" } },
@@ -47,35 +47,19 @@ function SectionLabel({ title, sub }: { title: string; sub: string }) {
 }
 
 function VerdictRow({ v }: { v: Matrix["verdict"] }) {
-  const fto = v.mode === "침해 위험";
-  const cards: [string, string, RiskLevel, string][] = fto
-    ? [
-        ["겹침이 큰 특허", "우리 구성이 살아 있는 특허에 얼마나 나오나", v.novelty.level, v.novelty.text],
-        ["클레임 차트 확인 순서", "상대 독립항의 모든 구성요소가 우리 제품에 있나", v.inventive.level, v.inventive.text],
-      ]
-    : [
-        ["신규성", "문헌 하나에 우리 구성이 전부 있는가", v.novelty.level, v.novelty.text],
-        ["진보성", "여러 문헌을 합치면 전부 나오는가", v.inventive.level, v.inventive.text],
-      ];
+  const L = verdictLabels(v.mode);
+  const cards: [string, string, RiskLevel, string][] = [
+    [L.cards[0][0], L.cards[0][1], v.novelty.level, v.novelty.text],
+    [L.cards[1][0], L.cards[1][1], v.inventive.level, v.inventive.text],
+  ];
   return (
     <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr]">
       {cards.map(([title, q, level, text]) => (
-        <div key={title} className="border bg-white p-4" style={{ borderColor: "var(--rule)" }}>
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[13px] font-extrabold">{fto ? title : `${title} 위험`}</span>
-            <span className="px-2 py-0.5 text-[11px] font-bold" style={RISK[level]}>
-              {level}
-            </span>
-          </div>
-          <div className="mt-0.5 text-[11px]" style={{ color: "var(--ink-mute)" }}>
-            {q}
-          </div>
-          <p className="mt-2 text-[12.5px] leading-snug">{text}</p>
-        </div>
+        <VerdictCard key={title} title={title} q={q} level={level} text={text} />
       ))}
       <div className="p-4 text-white" style={{ background: "var(--ink)" }}>
-        <div className="text-[13px] font-extrabold">{fto ? "우리 제품만의 구성" : "핵심 차별 구성"}</div>
-        <div className="mt-0.5 text-[11px] opacity-70">{fto ? "비교한 살아 있는 특허 어디에도 없는 구성" : "어느 문헌에도 없는 구성"}</div>
+        <div className="text-[13px] font-extrabold">{L.unique[0]}</div>
+        <div className="mt-0.5 text-[11px] opacity-70">{L.unique[1]}</div>
         {v.unique.length ? (
           <ul className="mt-2 space-y-1 text-[13px] font-bold">
             {v.unique.map((u) => (
@@ -83,9 +67,31 @@ function VerdictRow({ v }: { v: Matrix["verdict"] }) {
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-[12.5px] opacity-80">없음. ‘일부’ 칸의 차이를 정리해 차별점을 만들어야 합니다.</p>
+          <p className="mt-2 text-[12.5px] opacity-80">없음</p>
         )}
       </div>
+    </div>
+  );
+}
+
+// 판정은 수준을 크게, 설명은 누르면 보이게
+function VerdictCard({ title, q, level, text }: { title: string; q: string; level: RiskLevel; text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border bg-white p-4" style={{ borderColor: "var(--rule)" }}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[13px] font-extrabold">{title}</span>
+        <span className="px-2.5 py-1 text-[13px] font-extrabold" style={RISK[level]}>
+          {level}
+        </span>
+      </div>
+      <div className="mt-0.5 text-[11px]" style={{ color: "var(--ink-mute)" }}>
+        {q}
+      </div>
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="mt-2 text-[11.5px] font-bold underline underline-offset-2" style={{ color: "var(--ink-soft)" }}>
+        {open ? "설명 접기" : "왜 이렇게 나왔나"}
+      </button>
+      {open && <p className="mt-1.5 text-[12.5px] leading-snug">{text}</p>}
     </div>
   );
 }
@@ -103,7 +109,7 @@ export function MatrixView({ m, readOnly }: { m: Matrix; readOnly?: boolean }) {
           <thead>
             <tr>
               <th className="sticky left-0 border-b bg-white px-3 py-2.5 text-left text-[11px] font-bold" style={{ borderColor: "var(--rule)", color: "var(--ink-mute)" }}>
-                발명 구성 \ 선행 문헌
+                {m.verdict.mode === "무효자료 조사" ? "대상 특허 구성 \\ 먼저 나온 문헌" : "발명 구성 \\ 선행 문헌"}
               </th>
               {m.docs.map((d) => (
                 <th key={d.id} className="border-b border-l px-2 py-2 text-center align-bottom" style={{ borderColor: "var(--rule)" }} title={d.title}>

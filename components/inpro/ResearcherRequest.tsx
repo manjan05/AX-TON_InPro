@@ -63,9 +63,6 @@ export function ResearcherRequest({
     <div className="border bg-white" style={{ borderColor: "var(--rule)" }}>
       <div className="border-b px-4 py-3" style={{ borderColor: "var(--rule)" }}>
         <div className="text-[13px] font-extrabold">연구원에게 보내기</div>
-        <div className="mt-0.5 text-[11.5px]" style={{ color: "var(--ink-soft)" }}>
-          보완 질문을 한 번에 묶어 보냅니다.
-        </div>
       </div>
 
       <div className="space-y-3 px-4 py-4">
@@ -88,17 +85,17 @@ export function ResearcherRequest({
           />
         </div>
 
-        <div>
-          <div className="mb-1 text-[11px] font-bold" style={{ color: "var(--ink-mute)" }}>
-            미리보기
-          </div>
+        <details>
+          <summary className="cursor-pointer list-none text-[11.5px] font-bold underline underline-offset-2 [&::-webkit-details-marker]:hidden" style={{ color: "var(--ink-soft)" }}>
+            보낼 메시지 미리보기
+          </summary>
           <pre
             className="max-h-56 overflow-y-auto whitespace-pre-wrap border p-3 text-[11.5px] leading-relaxed"
             style={{ borderColor: "var(--rule)", background: "var(--paper)", fontFamily: "var(--font-body)" }}
           >
             {message}
           </pre>
-        </div>
+        </details>
 
         <div className="grid grid-cols-2 gap-2">
           <a

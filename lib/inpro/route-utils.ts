@@ -8,7 +8,8 @@ export function aiError(err: unknown) {
       { status: 503 }
     );
   }
-  console.error("[inpro]", err);
+  // 오류 객체에는 AI로 보낸 요청 본문(발명 내용)이 들어 있을 수 있다. 서버 기록에는 오류 종류만 남긴다.
+  console.error("[inpro] AI 오류:", err instanceof Error ? err.name : "unknown");
   return NextResponse.json({ error: `AI 처리에 실패했습니다. 다시 시도해 주세요. (${message.slice(0, 120)})` }, { status: 502 });
 }
 

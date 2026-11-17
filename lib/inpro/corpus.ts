@@ -18,6 +18,12 @@ export interface RawDoc {
 export const isLive = (d: Pick<RawDoc, "status">) => d.status === "등록";
 export const hasStatus = (docs: RawDoc[]) => docs.some((d) => !!d.status);
 
+// 출원번호(10-YYYY-NNNNNNN, 실용신안 20-…)에서 출원 연도를 읽는다. 무효자료 조사의 "먼저 나온 문헌" 기준.
+export function filingYear(id: string): number | null {
+  const m = /^(10|20)(\d{4})\d{7}$/.exec(id.replace(/[^0-9]/g, ""));
+  return m ? Number(m[2]) : null;
+}
+
 // 근거 확인과 AI 비교에 쓰는 원문: 초록 + 대표 청구항
 export function sourceText(d: Pick<RawDoc, "abstract" | "claims">): string {
   return d.claims ? `${d.abstract}\n${d.claims}` : d.abstract;

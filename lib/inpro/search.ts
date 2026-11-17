@@ -3,7 +3,7 @@ import patents from "@/data/patents.json";
 import airFilter from "@/data/domains/air-filter.json";
 import airFilterGlossary from "@/data/domains/air-filter-glossary.json";
 import type { InventionComponent, NearMiss, PriorDoc, Purpose } from "./types";
-import { funnel, hasStatus, isLive, type FunnelResult, type RawDoc } from "./corpus";
+import { filingYear, funnel, hasStatus, isLive, type FunnelResult, type RawDoc } from "./corpus";
 import { countMatches, nearMisses, rankDocs, type Glossary } from "./scoring";
 
 export type { RawDoc };
@@ -30,6 +30,35 @@ export function scopedCorpus(usage?: string, facet?: string, purpose: Purpose = 
 
 export const STATUS_AVAILABLE = hasStatus(CORPUS);
 
+// 경쟁사 조사·무효자료 조사의 대상 고르기: 조사 범위 안의 출원인 목록과 살아 있는 특허 목록
+export function searchTargets(usage?: string, facet?: string) {
+  const docs = scopedCorpus(usage, facet).docs;
+  const counts = new Map<string, number>();
+  for (const d of docs) if (d.applicant) counts.set(d.applicant, (counts.get(d.applicant) ?? 0) + 1);
+  return {
+    applicants: [...counts].sort((a, b) => b[1] - a[1]).slice(0, 20).map(([name, count]) => ({ name, count })),
+    patents: docs
+      .filter((d) => isLive(d) && filingYear(d.id))
+      .map((d) => ({ id: d.id, title: d.title, applicant: d.applicant, year: filingYear(d.id)! }))
+      .sort((a, b) => b.year - a.year),
+  };
+}
+
+// 목적별 마지막 거르기 (경쟁사 한 곳 / 대상 특허보다 먼저 출원)
+function targetFilter(docs: RawDoc[], purpose: Purpose, t: { applicant?: string; targetId?: string }) {
+  if (purpose === "경쟁사 조사" && t.applicant) {
+    const kept = docs.filter((d) => d.applicant === t.applicant);
+    return { docs: kept, stage: { label: `경쟁사 ${t.applicant}`, count: kept.length, note: `이 출원인의 특허만 남김 (다른 출원인 ${docs.length - kept.length}건 제외)` } };
+  }
+  if (purpose === "무효자료 조사" && t.targetId) {
+    const y = filingYear(t.targetId);
+    if (!y) return null;
+    const kept = docs.filter((d) => d.id !== t.targetId && (filingYear(d.id) ?? 9999) < y);
+    return { docs: kept, stage: { label: `${y}년 이전 출원`, count: kept.length, note: `대상 특허(${y}년 출원)보다 먼저 나온 문헌만 남김. 같은 해 출원은 날짜 확인이 필요해 제외` } };
+  }
+  return null;
+}
+
 function dedupe(docs: RawDoc[]): RawDoc[] {
   const seen = new Set<string>();
   return docs.filter((d) => {
@@ -55,12 +84,14 @@ export interface ExplainedSearch {
 // 선행조사 결과를 "어떻게 여기까지 좁혀졌나"와 함께 돌려준다
 export function explainedSearch(
   keywords: string[],
-  opts: { usage?: string; facet?: string; components?: InventionComponent[]; limit?: number; purpose?: Purpose } = {}
+  opts: { usage?: string; facet?: string; components?: InventionComponent[]; limit?: number; purpose?: Purpose; applicant?: string; targetId?: string } = {}
 ): ExplainedSearch {
   const limit = opts.limit ?? 10;
   const purpose = opts.purpose ?? "출원 검토";
   const base = scopedCorpus(opts.usage, opts.facet);
-  const f = scopedCorpus(opts.usage, opts.facet, purpose);
+  const scoped = scopedCorpus(opts.usage, opts.facet, purpose);
+  const target = targetFilter(scoped.docs, purpose, opts);
+  const f = target ? { ...scoped, docs: target.docs } : scoped;
   const inScope = new Set(f.docs.map((d) => d.id));
   const ranked = rankDocs(f.docs, keywords, { limit: limit + 5, glossary: GLOSSARY, components: opts.components });
   const docs = ranked.slice(0, limit);
@@ -81,15 +112,16 @@ export function explainedSearch(
     ...(base.stages.length > 1
       ? [{ label: "조사 범위 안", count: base.docs.length, note: `${scopeNote}만 남김 (범위 밖 ${f.stages[0].count - base.docs.length}건 제외)` }]
       : []),
-    ...(f.docs.length !== base.docs.length || (purpose === "침해 위험" && STATUS_AVAILABLE)
+    ...(scoped.docs.length !== base.docs.length || (purpose === "침해 위험" && STATUS_AVAILABLE)
       ? [
           {
             label: "살아 있는 권리",
-            count: f.docs.length,
+            count: scoped.docs.length,
             note: `등록 특허만 남김 (소멸·거절·취하 ${base.docs.filter((d) => d.status && d.status !== "등록" && d.status !== "공개").length}건, 심사 중 ${base.docs.filter((d) => d.status === "공개").length}건 제외)`,
           },
         ]
       : []),
+    ...(target ? [target.stage] : []),
     { label: "검색어 일치", count: matched, note: `검색어·동의어가 하나도 안 나온 ${f.docs.length - matched}건 제외` },
     { label: `상위 ${limit}건`, count: docs.length, note: "검색어가 제목·청구항에 많이, 여러 개 함께 나오는 순" },
     ...(liveExtra.length

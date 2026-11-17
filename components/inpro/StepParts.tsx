@@ -47,9 +47,14 @@ export function MetricCard({ label, children, sub }: { label: string; children: 
       </div>
       <div>{children}</div>
       {sub && (
-        <p className="mt-2 text-[12px] leading-snug" style={{ color: "var(--ink-soft)" }}>
-          {sub}
-        </p>
+        <details className="mt-2">
+          <summary className="cursor-pointer list-none text-[11.5px] font-bold underline underline-offset-2 [&::-webkit-details-marker]:hidden" style={{ color: "var(--ink-soft)" }}>
+            이유 보기
+          </summary>
+          <p className="mt-1.5 text-[12px] leading-snug" style={{ color: "var(--ink-soft)" }}>
+            {sub}
+          </p>
+        </details>
       )}
     </div>
   );
@@ -72,10 +77,10 @@ export function DocSection({ n, title, tag, children }: { n: string; title: stri
 
 // 팀장 인터뷰 질문 2: "국내 출원, 해외 출원, 영업비밀 관리 또는 보류 중 적절한 방안을 선택"
 export const DECISION_INFO: Record<Decision, string> = {
-  "국내 출원": "한국 특허청에 출원합니다. 출원일부터 12개월 안에 우선권을 주장해 해외로 넓힐 수 있습니다.",
-  "해외 출원": "주요 판매·생산 국가에 권리를 확보합니다. 비용과 기간이 크므로 사업 중요도가 높을 때 고릅니다.",
-  영업비밀: "제품을 뜯어봐도 알기 어려운 공정·제어 노하우는 공개하지 않고 사내 비밀로 보호합니다.",
-  보류: "자료 보완이나 사업성 확인이 필요합니다. 공개 예정일이 있으면 그 전에 다시 결정합니다.",
+  "국내 출원": "한국 특허청에 출원합니다. 12개월 안에 해외로 넓힐 수 있습니다.",
+  "해외 출원": "주요 국가에 권리를 확보합니다. 비용이 커서 사업 중요도가 높을 때 고릅니다.",
+  영업비밀: "뜯어봐도 알기 어려운 노하우는 공개하지 않고 비밀로 지킵니다.",
+  보류: "자료 보완이나 사업성 확인 뒤 다시 결정합니다.",
 };
 
 // AI가 "A, B 또는 C"처럼 쓴 대체 수단을 칩으로 나눈다

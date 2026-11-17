@@ -16,7 +16,7 @@ const mono = Roboto_Mono({ subsets: ["latin"], weight: ["500"], variable: "--fon
 
 export const metadata: Metadata = {
   title: "InPro",
-  description: "발명 접수부터 변리사 전달까지, 특허 담당자의 반복 업무를 잇는 AI 특허 업무 솔루션",
+  description: "선행기술을 확인하고 차별점을 찾아, 경쟁사가 피하기 어려운 권리를 발명자와 특허 담당자가 함께 설계하도록 돕는 AI",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

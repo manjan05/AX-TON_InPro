@@ -2,6 +2,7 @@ import Link from "next/link";
 import { HeroDocs, WorkflowCircle } from "@/components/landing/HeroDocs";
 import { WorkflowSection } from "@/components/landing/WorkflowSection";
 import { PricingSection } from "@/components/landing/PricingSection";
+import { DataNotice } from "@/components/inpro/DataNotice";
 
 export default function Landing() {
   return (
@@ -26,7 +27,9 @@ export default function Landing() {
             <p className="lp-hero-sub mb-3">
               Intellectual Property, in progress.
               <br />
-              발명 접수부터 변리사 전달까지 멈추지 않게.
+              차별점을 찾고, 경쟁사가 피하기 어려운 권리로.
+              <br />
+              발명자와 특허 담당자가 함께 설계합니다.
             </p>
             <h1 className="lp-hero-title">InPro</h1>
           </div>
@@ -48,6 +51,15 @@ export default function Landing() {
 
         {/* PRICING */}
         <PricingSection />
+
+        {/* DATA */}
+        <section id="data" className="lp-rule px-[var(--pad)] py-10">
+          <h2 className="mb-1 font-[family-name:var(--font-display)] text-[12px] font-bold uppercase tracking-[.12em]" style={{ color: "var(--ink-soft)" }}>
+            Data &amp; Security
+          </h2>
+          <p className="mb-4 text-[15px] font-bold">미공개 발명을 다루는 서비스라, 데이터가 어디로 가는지 먼저 밝힙니다.</p>
+          <DataNotice defaultOpen />
+        </section>
 
         {/* FOOTER */}
         <footer className="lp-rule flex flex-wrap items-center justify-between gap-5 px-[var(--pad)] py-6">

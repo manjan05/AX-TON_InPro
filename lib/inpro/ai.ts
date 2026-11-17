@@ -5,6 +5,7 @@ import type { IntakeResult, PriorDoc, ReviewDraft, ComparisonRow, InventionCompo
 import type { RawCell } from "./matrix";
 import { GLOSSARY } from "./search";
 import { CHECKLIST, missingFrom, verifyChecklist, type ChecklistId } from "./checklist";
+import { classify } from "./designaround";
 
 const intakeSchema = z.object({
   title: z.string().describe("발명의 가칭, 20자 이내"),
@@ -110,14 +111,29 @@ ${docList}`,
 }
 
 const level = z.enum(["높음", "보통", "낮음"]);
+const axis = (what: string) =>
+  z.object({
+    level: level.describe(what),
+    reason: z.string().describe("판단 이유 한 문장. 비교표의 어느 문헌·차이 때문인지 구체적으로"),
+    basis: z.string().describe("근거가 된 발명 구성 이름 하나 (구성 목록의 이름 그대로)"),
+  });
 const reviewSchema = z.object({
   summary: z.string().describe("사내 검토서 요약 2~3문장"),
-  differences: z.array(z.string()).describe("선행 문헌과 다른 점 후보"),
+  differences: z
+    .array(z.object({ point: z.string().describe("다른 점 후보 한 문장"), componentName: z.string().describe("이 차이가 걸린 발명 구성 이름 (구성 목록의 이름 그대로)") }))
+    .describe("선행 문헌과 다른 점 후보"),
   patentability: z.string().describe("특허성 의견 1~2문장. 등록 가능성을 단정하지 않는다"),
   businessImportance: level.describe("이 발명이 회사 제품·사업에 얼마나 중요한지"),
   businessReason: z.string(),
   imitationRisk: level.describe("경쟁사가 이 기술을 모방·활용할 가능성"),
   imitationReason: z.string(),
+  strength: z
+    .object({
+      designAround: axis("경쟁사가 이 권리를 피해 같은 효과를 내기 어려운 정도. 높음 = 피하기 어려움"),
+      detectability: axis("시중 경쟁 제품을 보고 침해를 알아챌 수 있는 정도. 외관·구조로 보이면 높음, 내부 제어·제조 공정이면 낮음"),
+      provability: axis("제품 분해·측정으로 침해 증거를 확보할 수 있는 정도. 높음 = 입증 쉬움"),
+    })
+    .describe("권리의 강도"),
   recommendation: z.enum(["국내 출원", "해외 출원", "영업비밀", "보류"]),
   reason: z.string().describe("추천 이유 한두 문장"),
   openIssues: z.array(z.string()).describe("변리사 전달 전에 남은 쟁점"),
@@ -137,11 +153,16 @@ export async function runReview(
 규칙:
 - "근거 부족" 행은 확정된 사실처럼 쓰지 않는다. 등록 가능성을 단정하지 않고, 다른 점은 "후보"로 쓴다.
 - 사업성: 회사 제품에서의 중요도, 경쟁사가 모방·활용할 가능성을 본다.
+- 다른 점 후보는 비교표에서 '차이 후보'이거나 문헌에 일부만 있는 구성에서 뽑고, 어느 구성의 차이인지 적는다.
+- 권리의 강도: 특허를 받을 수 있는지와 별개로, 받은 권리가 경쟁사를 실제로 막을 수 있는지 본다.
+  우회 어려움은 선행 문헌과 다른 구성(차별 구성)만으로 권리를 잡았을 때 그 구성을 다른 수단으로 바꾸기 쉬운지 본다.
+  침해 발견·입증은 그 차별 구성이 제품 밖에서 보이거나 분해·측정으로 확인되는지 본다. 근거 구성은 아래 구성 목록에서 고른다.
 - 추천: 국내 출원 / 해외 출원 / 영업비밀(외부에서 역설계로 알기 어려운 공정·제어 노하우일 때) / 보류(자료 부족·사업성 낮음).
 - 남은 쟁점은 연구원이 아직 답하지 않은 질문과 근거 부족 항목에서 뽑는다.
 
 발명: ${intake.title} (${intake.field})
 해결 문제: ${intake.problem}
+구성 목록: ${intake.components.map((c) => c.name).join(", ")}
 아직 빠진 항목: ${intake.missing.map((m) => m.item).join(", ") || "없음"}
 연구원 보완 답변: ${answers || "없음"}
 ${context}
@@ -149,7 +170,11 @@ ${context}
 [비교표]
 ${table(rows)}`,
   });
-  return output;
+  return {
+    ...output,
+    differences: output.differences.map((d) => d.point),
+    differenceBasis: output.differences.map((d) => d.componentName),
+  };
 }
 
 function table(rows: ComparisonRow[]) {
@@ -165,27 +190,34 @@ const scopeSchema = z.object({
   items: z.array(
     z.object({
       componentName: z.string(),
-      role: z.enum(["핵심", "대체 가능", "부가"]),
-      reason: z.string().describe("이렇게 분류한 이유 한 문장"),
-      alternatives: z.string().describe("경쟁사가 이 구성 대신 쓸 수 있는 다른 기술 수단 2~4개. 각각 15자 이내 명사구, 쉼표로 구분. 예: 롤형 감기, M자 주름, 허니콤 구조"),
-      designAround: z.enum(["어려움", "보통", "쉬움"]).describe("경쟁사가 이 구성을 피해 같은 효과를 내기가 얼마나 쉬운지"),
+      essential: z.boolean().describe("이 구성이 발명의 효과를 내는 데 꼭 필요한가"),
+      attempts: z
+        .array(
+          z.object({
+            method: z.string().describe("경쟁사가 이 구성 대신 쓸 구체적 수단, 15자 이내 명사구. 예: M자 주름, 허니콤 구조"),
+            keepsEffect: z.enum(["유지", "일부", "안 됨"]).describe("그 수단으로 바꿔도 발명과 같은 효과가 나는가"),
+            why: z.string().describe("그렇게 본 이유 한 문장. 비교표의 문헌이 근거면 그 문헌을 적는다"),
+          })
+        )
+        .describe("경쟁사의 회피 시도 2~4개"),
     })
   ),
   strategy: z.string().describe("권리범위 방향 2~3문장. 청구항 문장은 쓰지 않는다"),
 });
 
-// 권리범위 설계 보조: "경쟁사가 우회하기 어려운 어떤 권리를 만들 것인가" (팀장 인터뷰 질문 2)
 export async function runScope(intake: IntakeResult, rows: ComparisonRow[], review: ReviewDraft): Promise<ScopeResult> {
   const { output } = await generateText({
     model: MODEL_ID,
     output: Output.object({ schema: scopeSchema }),
-    prompt: `발명의 구성 요소를 권리범위 설계 관점에서 나눈다. 변리사가 청구항을 쓰기 전에 사내에서 방향을 잡는 용도다.
+    prompt: `너는 이 발명을 피해 가려는 경쟁사 엔지니어다. 청구항을 쓰기 전에, 구성마다 "어떻게 하면 이 권리를 피하면서 같은 효과를 낼까"를 시도한다.
 
-분류:
-- 핵심: 효과를 내는 데 꼭 필요하고, 선행 문헌과 다른 점 후보에 해당하는 구성
-- 대체 가능: 다른 수단으로 바꿔도 같은 효과가 나는 구성. 권리를 이 구체적 형태로 좁히면 경쟁사가 쉽게 피한다
-- 부가: 효과와 직접 관계없는 구성
-규칙: 청구항 문장을 쓰지 않는다. 각 구성마다 경쟁사가 바꿔 쓸 수 있는 수단을 구체적으로 적는다.
+규칙:
+- 구성마다 회피 시도 2~4개를 낸다. 실제로 만들 수 있는 구체적 수단만 쓴다.
+- keepsEffect: 그 수단으로 바꿔도 발명과 같은 효과가 나면 "유지", 일부만 나면 "일부", 효과가 사라지면 "안 됨".
+- 선행 문헌(비교표)에 이미 있는 수단이면 why에 그 문헌을 적는다.
+- essential: 효과와 직접 관계없는 구성(외형, 고정 방식 등)이면 false.
+- 핵심·대체 가능 구분은 하지 않는다. 회피 시도 결과로 따로 정한다.
+- strategy는 회피 시도 결과를 바탕으로 쓴다. 청구항 문장은 쓰지 않는다.
 
 발명: ${intake.title} — ${intake.problem}
 구성 요소:
@@ -196,5 +228,35 @@ ${intake.components.map((c) => `- ${c.name}: ${c.description}`).join("\n")}
 ${table(rows)}`,
   });
   const names = new Set(intake.components.map((c) => c.name));
-  return { ...output, items: output.items.filter((i) => names.has(i.componentName)) };
+  const items = output.items.filter((i) => names.has(i.componentName)).map((i) => ({ componentName: i.componentName, ...classify(i) }));
+  return { strategy: output.strategy, items };
+}
+
+// 무효자료 조사: 대상 특허의 대표 청구항을 구성요소로 나눈다 (청구항 문구에 있는 것만)
+const claimSchema = z.object({
+  components: z.array(z.object({ name: z.string().describe("구성요소 이름, 15자 이내"), description: z.string().describe("청구항 문구를 바탕으로 한 한 문장") })).describe("청구항 구성요소 3~6개"),
+  keywords: z.array(z.string()).describe("이 구성요소를 먼저 나온 문헌에서 찾기 위한 한국어 검색어 6~10개, 각 2~6자"),
+});
+
+export async function runClaimElements(doc: { title: string; abstract: string; claims?: string }): Promise<{ components: InventionComponent[]; keywords: string[] }> {
+  const { output } = await generateText({
+    model: MODEL_ID,
+    output: Output.object({ schema: claimSchema }),
+    prompt: `무효자료 조사를 위해 아래 특허의 대표 청구항을 구성요소로 나눈다.
+- 청구항에 적힌 구성만 쓴다. 초록에만 있는 내용이나 추측은 넣지 않는다.
+- 구성요소는 청구항의 순서대로, 다른 문헌과 하나씩 대조할 수 있는 단위로 나눈다.
+- 검색어는 특허 문서에 실제로 쓰이는 말로 쓴다. 아래 분야 용어 사전에 관련된 말이 있으면 그 표현을 쓴다.
+
+[분야 용어 사전 (같은 줄은 같은 뜻)]
+${GLOSSARY.map((g) => g.join(" = ")).join("\n")}
+
+[대상 특허]
+제목: ${doc.title}
+대표 청구항: ${doc.claims ?? "(없음)"}
+초록: ${doc.abstract}`,
+  });
+  return {
+    components: output.components.slice(0, 6).map((c, i) => ({ id: `E${i + 1}`, ...c })),
+    keywords: Array.from(new Set(output.keywords.map((k) => k.trim()).filter(Boolean))).slice(0, 12),
+  };
 }

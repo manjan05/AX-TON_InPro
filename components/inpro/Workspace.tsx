@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DECISIONS,
   DEV_STAGES,
@@ -14,7 +14,7 @@ import {
   type ScopeRole,
 } from "@/lib/inpro/types";
 import { changedComponents } from "@/lib/inpro/evidence";
-import { PURPOSES, type ExcludeReason, type Purpose } from "@/lib/inpro/types";
+import { PURPOSES, PURPOSE_INFO, purposeLabel, type ExcludeReason, type InventionComponent, type Purpose } from "@/lib/inpro/types";
 import { buildHandoffMarkdown, openQuestions, type CaseEvent, type SurveyRecord } from "@/lib/inpro/package";
 import { DISCLOSURE_TYPES, disclosureStatus } from "@/lib/inpro/disclosure";
 import { Button, Card, CompareTable, InProLogo, StepTitle, Tag } from "./ui";
@@ -23,10 +23,22 @@ import { MatrixView } from "./MatrixView";
 import type { Matrix } from "@/lib/inpro/matrix";
 import { DocCard, NearMissPanel, SearchPath, type SearchMeta } from "./SearchResults";
 import { ResearcherRequest } from "./ResearcherRequest";
-import { DECISION_INFO, DocSection, EmptyAction, LevelMeter, MetricCard, splitAlternatives } from "./StepParts";
+import { DECISION_INFO, DocSection, EmptyAction, LevelMeter, MetricCard } from "./StepParts";
+import { StrengthCard } from "./StrengthCard";
+import { DataNotice } from "./DataNotice";
+import { Fold, SubRail, type Sub3 } from "./Parts3";
+import { BasisList, EvidenceLine } from "./Evidence";
+import { componentEvidence, distinctionSummary, recommendationBasis } from "@/lib/inpro/basis";
+import { ScopeItemCard } from "./ScopeItemCard";
+import { strengthConflict } from "@/lib/inpro/designaround";
+import { STRENGTH_AXES, overallStrength } from "@/lib/inpro/strength";
 import { EMPTY_FORM, EXAMPLE_FORM, IntakeForm, composeDescription, type IntakeFormState } from "./IntakeForm";
 import { ChecklistView } from "./ChecklistView";
 import { WatchPanel, type WatchInfo } from "./WatchPanel";
+import { DistinctionLoop } from "./DistinctionLoop";
+import { TargetPicker, type InvalidityTarget, type SearchTargets } from "./TargetPicker";
+import { buildInvalidityMarkdown } from "@/lib/inpro/package";
+import { appendFollowUp, priorArtQuestions, summarizeRound, type SurveyRound } from "@/lib/inpro/followup";
 
 // 팀장 인터뷰 질문 2의 실제 발명 검토 흐름을 따른다
 const STEPS = ["발명 접수", "기술 이해·보완", "선행기술 조사", "특허성·사업성", "권리범위 설계", "출원 결정·전달"];
@@ -72,6 +84,14 @@ export function Workspace() {
   const [docs, setDocs] = useState<PriorDoc[]>([]);
   const [searchLog, setSearchLog] = useState<SearchLog | null>(null);
   const [watch, setWatch] = useState<WatchInfo | null>(null);
+  const [rounds, setRounds] = useState<SurveyRound[]>([]);
+  const [sub3, setSub3] = useState<Sub3>("설정");
+  // 경쟁사 조사·무효자료 조사 대상
+  const [targets, setTargets] = useState<SearchTargets | null>(null);
+  const [competitor, setCompetitor] = useState("");
+  const [invalidTarget, setInvalidTarget] = useState<InvalidityTarget | null>(null);
+  const [followAnswers, setFollowAnswers] = useState<Record<string, string>>({});
+  const [followSentAt, setFollowSentAt] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [searchMeta, setSearchMeta] = useState<SearchMeta | null>(null);
   const [excluded, setExcluded] = useState<Record<string, ExcludeReason>>({});
@@ -191,6 +211,7 @@ export function Workspace() {
       setChanged(diff);
       setConfirmed((c) => new Set([...c].filter((n) => !diff.has(n) && result.cmp!.rows.some((r) => r.componentName === n))));
       invalidateDownstream();
+      setSub3("결과");
       log("InPro AI", `비교표 갱신, 판단 바뀐 구성 ${diff.size}개 재승인 필요`);
       go(3);
     } else {
@@ -200,9 +221,52 @@ export function Workspace() {
   }
 
   // STEP 3
+  useEffect(() => {
+    if (!searchScope) return;
+    const q = new URLSearchParams({ usage: searchScope.usage ?? "", facet: searchScope.facet ?? "" });
+    let alive = true;
+    fetch(`/api/inpro/search?${q}`)
+      .then((r) => r.json())
+      .then((d: { targets?: SearchTargets }) => {
+        if (alive && d.targets) setTargets(d.targets);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [searchScope]);
+
+  const isInvalidity = purpose === "무효자료 조사";
+  // 데이터가 없는 화면으로는 가지 않는다
+  const view3: Sub3 = sub3 === "결과" && rows.length === 0 ? (docs.length > 0 ? "후보" : "설정") : sub3 === "후보" && docs.length === 0 ? "설정" : sub3;
+  const targetReady = purpose === "경쟁사 조사" ? !!competitor : isInvalidity ? !!invalidTarget : true;
+  // 무효자료 조사는 우리 발명이 아니라 대상 특허 구성을 찾는다
+  const searchKeywords = isInvalidity && invalidTarget ? invalidTarget.keywords : keywords;
+  const editKeywords = (fn: (ks: string[]) => string[]) =>
+    isInvalidity && invalidTarget ? setInvalidTarget((t) => (t ? { ...t, keywords: fn(t.keywords) } : t)) : setKeywords(fn);
+  const compareComponents = (): InventionComponent[] => (isInvalidity && invalidTarget ? invalidTarget.components : intake?.components ?? []);
+
+  async function loadInvalidTarget(id: string) {
+    const result = await run("target", () => post<InvalidityTarget>("/api/inpro/target", { id }));
+    if (!result) return;
+    setInvalidTarget(result);
+    setDocs([]);
+    setRows([]);
+    setMatrix(null);
+    log("담당자", `무효자료 조사 대상: ${result.doc.title.slice(0, 24)} (${result.doc.id})`);
+    log("InPro AI", `대상 특허 청구항을 구성요소 ${result.components.length}개로 나눔`);
+  }
+
   async function doSearch() {
     const result = await run("search", () =>
-      post<SearchMeta & { docs: PriorDoc[]; log: SearchLog }>("/api/inpro/search", { keywords, ...searchScope, purpose, components: intake?.components })
+      post<SearchMeta & { docs: PriorDoc[]; log: SearchLog }>("/api/inpro/search", {
+        keywords: searchKeywords,
+        ...searchScope,
+        purpose,
+        components: compareComponents(),
+        applicant: purpose === "경쟁사 조사" ? competitor : undefined,
+        targetId: isInvalidity ? invalidTarget?.doc.id : undefined,
+      })
     );
     if (!result) return;
     setDocs(result.docs);
@@ -215,13 +279,14 @@ export function Workspace() {
     const needLive = purpose === "둘 다" ? Math.max(0, 2 - pick.filter((d) => d.status === "등록").length) : 0;
     const addLive = result.docs.filter((d) => d.status === "등록" && !pick.includes(d)).slice(0, needLive);
     setSelected(new Set([...pick, ...addLive].map((d) => d.id)));
+    setSub3("후보");
     log("담당자", `조사 범위 확정: 키워드 ${keywords.length}개`);
     log("InPro AI", `선행조사 실행, 후보 ${result.docs.length}건`);
   }
 
   async function doCompare() {
     if (!intake) return;
-    const result = await run("compare", () => compareWith(intake.components, Array.from(selected)));
+    const result = await run("compare", () => compareWith(compareComponents(), Array.from(selected)));
     if (!result) return;
     setRows(result.rows);
     setMatrix(result.matrix);
@@ -229,6 +294,10 @@ export function Workspace() {
     setChanged(new Set());
     invalidateDownstream();
     if (surveys.length === 0) setSurveys([{ stage, at: new Date().toISOString(), changedCount: 0, note: "최초 조사" }]);
+    setRounds(isInvalidity ? [] : [summarizeRound(1, result.rows, 0)]);
+    setSub3("결과");
+    setFollowAnswers({});
+    setFollowSentAt(null);
     const weak = result.rows.filter((r) => r.relation === "근거 부족").length;
     log("담당자", `문헌 ${selected.size}건 선택`);
     log("InPro AI", `비교표 생성, 근거 부족 ${weak}건 표시`);
@@ -281,7 +350,7 @@ export function Workspace() {
 
   // STEP 4
   const reviewContext = [
-    `조사 목적: ${purpose}${purpose === "침해 위험" ? " (살아 있는 등록 특허만 비교함)" : purpose === "둘 다" ? " (모든 선행기술로 출원 검토, 그중 등록 특허로 침해 위험)" : " (소멸·거절 포함 모든 선행기술)"}`,
+    `조사 목적: ${purposeLabel(purpose)} — ${PURPOSE_INFO[purpose].desc}${purpose === "경쟁사 조사" && competitor ? ` (경쟁사: ${competitor})` : ""}`,
     `현재 개발 단계: ${stage}`,
     disclosure && disc ? `공개 예정: ${disclosure.type} ${disclosure.date} (${disc.days}일 남음)` : "",
     matrix ? `매트릭스 판정 — ${matrix.verdict.mode === "침해 위험" ? "겹침" : "신규성 위험"} ${matrix.verdict.novelty.level}: ${matrix.verdict.novelty.text} / ${matrix.verdict.mode === "침해 위험" ? "확인 순서" : "진보성 위험"} ${matrix.verdict.inventive.level}: ${matrix.verdict.inventive.text}` : "",
@@ -321,10 +390,48 @@ export function Workspace() {
 
   // STEP 6
   const unconfirmed = rows.filter((r) => !confirmed.has(r.componentName)).length;
+  // 최종 결정은 담당자: AI 추천과 다르게 정해도 되지만, 이유는 남긴다
+  const overrideNeedsMemo = !!review && decision !== review.recommendation && !decisionMemo.trim();
   function approve() {
     setApprovedAt(new Date().toISOString());
     log("담당자", `결정: ${decision}`);
     log("승인자", `${approver} 승인`);
+  }
+
+  // 반복 조사: 선행기술 → 발명자 재인터뷰 → 차별점 재정의 → 재검색 (IP 실무자 피드백 1)
+  const followQs = priorArtQuestions(rows, 4, Object.fromEntries((intake?.components ?? []).map((c) => [c.name, c.description])));
+  async function doLoop() {
+    const qa = followQs.map((q) => ({ question: q.question, answer: followAnswers[q.question] ?? "" }));
+    const round = Math.max(1, rounds.length);
+    const newDesc = appendFollowUp(description, round, qa);
+    const result = await run("loop", async () => {
+      const next = await post<IntakeResult>("/api/inpro/intake", { description: newDesc, answers: answersText });
+      const kws = Array.from(new Set([...keywords, ...next.keywords]));
+      const found = await post<SearchMeta & { docs: PriorDoc[]; log: SearchLog }>("/api/inpro/search", { keywords: kws, ...searchScope, purpose, components: next.components });
+      const ids = Array.from(new Set([...selected, ...found.docs.slice(0, 2).map((d) => d.id)])).slice(0, 6);
+      const cmp = await compareWith(next.components, ids);
+      return { next, kws, found, ids, cmp };
+    });
+    if (!result) return;
+    const diff = changedComponents(rows, result.cmp.rows);
+    setDescription(newDesc);
+    setIntake(result.next);
+    setKeywords(result.kws);
+    setDocs(result.found.docs);
+    setSearchMeta({ path: result.found.path, nearMiss: result.found.nearMiss, outOfScope: result.found.outOfScope, extra: result.found.extra });
+    setSearchLog(result.found.log);
+    setSelected(new Set(result.ids));
+    setRows(result.cmp.rows);
+    setMatrix(result.cmp.matrix);
+    setChanged(diff);
+    setConfirmed((c) => new Set([...c].filter((n) => !diff.has(n) && result.cmp.rows.some((r) => r.componentName === n))));
+    invalidateDownstream();
+    setRounds((r) => [...r, summarizeRound(r.length + 1, result.cmp.rows, diff.size)]);
+    setFollowAnswers({});
+    setFollowSentAt(null);
+    log("연구원", `선행기술 대비 재인터뷰 답변 ${qa.filter((q) => q.answer.trim()).length}개`);
+    setSub3("결과");
+    log("InPro AI", `${round + 1}회차: 차별점 재정의 · 재검색 · 비교표 갱신, 판단 바뀐 구성 ${diff.size}개`);
   }
 
   // 개발 단계별 재조사 (질문 8): 바뀐 설계로 다시 정리·조사·비교하고, 판단이 바뀐 구성만 재승인
@@ -349,6 +456,7 @@ export function Workspace() {
     setSearchLog(result.found.log);
     setSelected(new Set(result.ids));
     setRows(result.cmp.rows);
+    setMatrix(result.cmp.matrix);
     setChanged(diff);
     setConfirmed((c) => new Set([...c].filter((n) => !diff.has(n) && result.cmp.rows.some((r) => r.componentName === n))));
     invalidateDownstream();
@@ -358,6 +466,7 @@ export function Workspace() {
     setNextStage(DEV_STAGES[Math.min(idx + 1, DEV_STAGES.length - 1)]);
     setChangeNote("");
     log("담당자", `개발 단계 전환: ${nextStage}`);
+    setSub3("결과");
     log("InPro AI", `재조사 완료, 판단 바뀐 구성 ${diff.size}개 재승인 필요`);
     go(3);
   }
@@ -513,7 +622,10 @@ export function Workspace() {
           {/* STEP 1 */}
           {step === 1 && (
             <Card>
-              <StepTitle n={1} title="발명 접수" sub="연구원이 가진 메모·보고서·PDF를 그대로 넣으세요. InPro가 기술 구성을 뽑고, 출원 체크리스트로 빠진 항목을 짚습니다." />
+              <StepTitle n={1} title="발명 접수" sub="연구원 자료를 그대로 넣으면 구성과 빠진 항목을 짚어 드립니다." />
+              <div className="mb-6">
+                <DataNotice />
+              </div>
               <IntakeForm
                 form={form}
                 onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
@@ -538,10 +650,23 @@ export function Workspace() {
               />
 
               {intake && (
-                <div className="mt-10 grid gap-5 border-t pt-8 md:grid-cols-2" style={{ borderColor: "var(--hairline)" }}>
+                <div className="mt-10 border-t pt-8" style={{ borderColor: "var(--hairline)" }}>
+                  <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-[family-name:var(--font-display)] text-[26px] font-extrabold leading-tight">
+                        구성 {intake.components.length}개 · 빠진 항목 <span style={{ color: "var(--crimson)" }}>{intake.missing.length}개</span>
+                      </div>
+                      <div className="line-clamp-1 text-[12px]" style={{ color: "var(--ink-mute)" }}>
+                        {intake.field} · {intake.problem}
+                      </div>
+                    </div>
+                    <Button arrow onClick={() => go(2)}>
+                      다음: 발명자 인터뷰
+                    </Button>
+                  </div>
+                <div className="grid gap-5 md:grid-cols-2">
                   <div>
                     <h3 className="mb-2 text-sm font-extrabold">기술 구성 초안 <Tag>AI 제안</Tag></h3>
-                    <p className="mb-3 text-[13px]" style={{ color: "var(--ink-soft)" }}>{intake.field} · {intake.problem}</p>
                     <ul className="space-y-2">
                       {intake.components.map((c) => (
                         <li key={c.id} className="border p-3 text-[13px]" style={{ borderColor: "var(--hairline)", background: "#fff" }}>
@@ -554,16 +679,11 @@ export function Workspace() {
                   </div>
                   <div>
                     <h3 className="mb-2 text-sm font-extrabold">
-                      출원 체크리스트 <Tag tone="orange">빠진 항목 {intake.missing.length}개</Tag>
+                      출원 체크리스트 <Tag tone="orange">충족 {(intake.checklist ?? []).filter((c) => c.status === "충족").length}/{intake.checklist?.length ?? 8}</Tag>
                     </h3>
-                    <p className="mb-2 text-[11.5px]" style={{ color: "var(--ink-mute)" }}>
-                      명세서에 꼭 필요한 {intake.checklist?.length ?? 8}개 항목. ‘충족’은 자료에서 근거 문장이 확인될 때만 표시합니다.
-                    </p>
                     <ChecklistView items={intake.checklist ?? []} />
                   </div>
-                  <div className="md:col-span-2">
-                    <Button onClick={() => go(2)}>다음: 발명자 인터뷰 →</Button>
-                  </div>
+                </div>
                 </div>
               )}
             </Card>
@@ -575,7 +695,7 @@ export function Workspace() {
               <StepTitle
                 n={2}
                 title="기술 이해·보완"
-                sub="빠진 항목을 연구원이 바로 답할 수 있는 질문으로 바꿨습니다. 한 번에 보내고, 받은 답을 넣으면 기술 구성을 다시 정리합니다."
+                sub="발명자에게 물어볼 것만 질문으로 만들었습니다."
               />
               <div className="grid gap-8 lg:grid-cols-[1fr_300px]">
                 <div className="min-w-0">
@@ -661,10 +781,7 @@ export function Workspace() {
                     }}
                   />
                   {intake.missing.length > 0 && (
-                    <div className="border p-4" style={{ borderColor: "var(--rule)" }}>
-                      <div className="mb-2 text-[11px] font-bold" style={{ color: "var(--ink-mute)" }}>
-                        질문의 근거가 된 빠진 항목
-                      </div>
+                    <Fold summary={`질문의 근거 · 빠진 항목 ${intake.missing.length}개`}>
                       <ul className="space-y-1.5 text-[12.5px]">
                         {intake.missing.map((m) => (
                           <li key={m.item}>
@@ -673,7 +790,7 @@ export function Workspace() {
                           </li>
                         ))}
                       </ul>
-                    </div>
+                    </Fold>
                   )}
                 </aside>
               </div>
@@ -683,85 +800,108 @@ export function Workspace() {
           {/* STEP 3 */}
           {step === 3 && intake && (
             <Card>
-              <StepTitle n={3} title="선행기술 조사" sub="검색어를 확정하고, 비교할 문헌을 고르면 구성 요소별로 원문과 대조합니다. 원문에서 확인되지 않은 판단은 '근거 부족'으로 낮춥니다." />
-                <div className="mb-6">
-                  <div className="mb-2 font-[family-name:var(--font-display)] text-[12px] font-bold uppercase tracking-[.12em]" style={{ color: "var(--ink-soft)" }}>
-                    조사 목적
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label="조사 목적">
-                    {PURPOSES.map((p) => {
-                      const on = purpose === p;
-                      const info =
-                        p === "둘 다"
-                          ? ["한 번 조사로 두 판정을 봅니다", "모든 선행기술로 신규성·진보성을, 그중 등록 특허로 침해 위험을 봅니다. 등록 특허 상위 5건은 따로 보충합니다."]
-                          : p === "출원 검토"
-                          ? ["우리 발명이 특허를 받을 수 있나", "소멸·거절된 문헌까지 모든 선행기술과 비교합니다. 신규성·진보성을 봅니다."]
-                          : ["피해야 할 살아 있는 특허가 있나", "등록 특허만 비교합니다. 겹침이 큰 특허부터 클레임 차트로 확인할 순서를 정합니다."];
-                      return (
-                        <button
-                          key={p}
-                          type="button"
-                          role="radio"
-                          aria-checked={on}
-                          onClick={() => changePurpose(p)}
-                          className="flex flex-col gap-1 border bg-white p-4 text-left transition"
-                          style={on ? { borderColor: "var(--crimson)", boxShadow: "inset 0 0 0 1px var(--crimson)" } : { borderColor: "var(--rule)" }}
-                        >
-                          <span className="flex items-center gap-2 text-[15px] font-extrabold">
-                            <span className="grid h-4 w-4 place-items-center rounded-full border" style={{ borderColor: on ? "var(--crimson)" : "var(--rule)" }}>
-                              {on && <span className="h-2 w-2 rounded-full" style={{ background: "var(--crimson)" }} />}
-                            </span>
-                            {p}
-                            {p === "둘 다" && (
-                              <span className="px-1.5 py-0.5 text-[10px] font-bold" style={{ background: "var(--crimson-soft)", color: "var(--crimson)" }}>
-                                기본
-                              </span>
-                            )}
-                          </span>
-                          <span className="text-[13px] font-bold">{info[0]}</span>
-                          <span className="text-[12px] leading-snug" style={{ color: "var(--ink-soft)" }}>
-                            {info[1]}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              <FunnelPanel scope={searchScope} onScope={setSearchScope} purpose={purpose} />
-              <div className="mb-3 flex flex-wrap gap-2">
-                {keywords.map((k) => (
-                  <span key={k} className="inline-flex items-center gap-1 px-3 py-1 text-[13px] font-bold" style={{ background: "var(--crimson-soft)", color: "var(--crimson)" }}>
-                    {k}
-                    <button type="button" aria-label={`${k} 삭제`} onClick={() => setKeywords((ks) => ks.filter((x) => x !== k))} className="ml-0.5 opacity-60 hover:opacity-100">×</button>
-                  </span>
-                ))}
-              </div>
-              <form
-                className="mb-4 flex flex-wrap gap-2"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const k = newKeyword.trim();
-                  if (k && !keywords.includes(k)) setKeywords((ks) => [...ks, k]);
-                  setNewKeyword("");
-                }}
-              >
-                <input value={newKeyword} onChange={(e) => setNewKeyword(e.target.value)} placeholder="키워드 추가" className={`w-44 ${inputCls}`} style={{ borderColor: "var(--hairline)", background: "#fff" }} />
-                <Button variant="ghost">추가</Button>
-                <Button onClick={doSearch} loading={busy === "search"} disabled={keywords.length === 0}>선행조사 실행</Button>
-              </form>
-              <p className="mb-3 font-mono text-[11px]" style={{ color: "var(--ink-soft)" }}>
-                국내 · 초록·대표 청구항 기준 1차 검토
-                {searchLog && ` · ${new Date(searchLog.searchedAt).toLocaleString("ko-KR")} · ${searchLog.corpus} · 후보 ${searchLog.hits}건`}
-              </p>
+              <StepTitle n={3} title="선행기술 조사" sub="목적을 정하고, 후보를 고르면, 구성별로 비교합니다." />
+              <SubRail view={view3} canCandidates={docs.length > 0} canResult={rows.length > 0} onPick={setSub3} />
 
-              {docs.length > 0 && searchMeta && (
-                <div className="space-y-4">
-                  <SearchPath path={searchMeta.path} selectedCount={selected.size} />
-                  <div className="flex flex-wrap items-baseline justify-between gap-2 pt-2">
-                    <span className="font-[family-name:var(--font-display)] text-[12px] font-bold uppercase tracking-[.12em]" style={{ color: "var(--ink-soft)" }}>
-                      후보 문헌 · 체크한 문헌으로 비교표를 만듭니다 (최대 6건)
-                    </span>
+              {/* ① 조사 설정 */}
+              {view3 === "설정" && (
+                <div>
+                  <div className="mb-5">
+                    <div className="mb-2 font-[family-name:var(--font-display)] text-[12px] font-bold uppercase tracking-[.12em]" style={{ color: "var(--ink-soft)" }}>
+                      조사 목적
+                    </div>
+                    <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="조사 목적">
+                      {PURPOSES.map((p) => {
+                        const on = purpose === p;
+                        return (
+                          <button
+                            key={p}
+                            type="button"
+                            role="radio"
+                            aria-checked={on}
+                            onClick={() => changePurpose(p)}
+                            className="border px-3.5 py-2 text-[13.5px] font-bold transition"
+                            style={on ? { background: "var(--crimson)", color: "#fff", borderColor: "var(--crimson)" } : { borderColor: "var(--rule)", background: "#fff" }}
+                          >
+                            {PURPOSE_INFO[p].label}
+                            {p === "둘 다" && <span className="ml-1.5 text-[10px] opacity-80">기본</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-2.5 text-[13.5px] font-bold">{PURPOSE_INFO[purpose].question}</p>
+                    <p className="mt-0.5 text-[12px] leading-snug" style={{ color: "var(--ink-soft)" }}>
+                      {PURPOSE_INFO[purpose].desc}
+                    </p>
+                    {(purpose === "경쟁사 조사" || isInvalidity) && (
+                      <TargetPicker
+                        purpose={purpose}
+                        targets={targets}
+                        competitor={competitor}
+                        onCompetitor={(c) => {
+                          setCompetitor(c);
+                          setDocs([]);
+                          setRows([]);
+                          setMatrix(null);
+                        }}
+                        target={invalidTarget}
+                        onLoadTarget={loadInvalidTarget}
+                        loading={busy === "target"}
+                      />
+                    )}
                   </div>
+                  <FunnelPanel scope={searchScope} onScope={setSearchScope} purpose={purpose} />
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    {searchKeywords.map((k) => (
+                      <span key={k} className="inline-flex items-center gap-1 px-3 py-1 text-[13px] font-bold" style={{ background: "var(--crimson-soft)", color: "var(--crimson)" }}>
+                        {k}
+                        <button type="button" aria-label={`${k} 삭제`} onClick={() => editKeywords((ks) => ks.filter((x) => x !== k))} className="ml-0.5 opacity-60 hover:opacity-100">
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <form
+                    className="flex flex-wrap items-center gap-2"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const k = newKeyword.trim();
+                      if (k && !searchKeywords.includes(k)) editKeywords((ks) => [...ks, k]);
+                      setNewKeyword("");
+                    }}
+                  >
+                    <input value={newKeyword} onChange={(e) => setNewKeyword(e.target.value)} placeholder="키워드 추가" className={`w-44 ${inputCls}`} style={{ borderColor: "var(--hairline)", background: "#fff" }} />
+                    <Button variant="ghost">추가</Button>
+                    <span className="mx-1 h-5 w-px" style={{ background: "var(--rule)" }} />
+                    <Button arrow onClick={doSearch} loading={busy === "search"} disabled={searchKeywords.length === 0 || !targetReady}>
+                      {targetReady ? "선행조사 실행" : purpose === "경쟁사 조사" ? "경쟁사를 고르세요" : "대상 특허를 고르세요"}
+                    </Button>
+                  </form>
+                </div>
+              )}
+
+              {/* ② 후보 고르기 */}
+              {view3 === "후보" && searchMeta && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                      <div className="font-[family-name:var(--font-display)] text-[26px] font-extrabold leading-tight">
+                        후보 {docs.length}건 중 <span style={{ color: "var(--crimson)" }}>{selected.size}건</span> 선택
+                      </div>
+                      <div className="text-[12px]" style={{ color: "var(--ink-mute)" }}>
+                        비교표에 넣을 문헌을 체크하세요 (최대 6건)
+                      </div>
+                    </div>
+                    <Button variant="ghost" onClick={() => setSub3("설정")}>
+                      ← 조사 설정
+                    </Button>
+                  </div>
+                  <Fold summary={`검색 경로 · ${searchMeta.path.map((p) => `${p.count.toLocaleString()}건`).join(" → ")}`}>
+                    <p className="mb-3 font-mono text-[11px]" style={{ color: "var(--ink-soft)" }}>
+                      국내 · 초록·대표 청구항 기준 1차 검토{searchLog && ` · ${new Date(searchLog.searchedAt).toLocaleString("ko-KR")}`}
+                    </p>
+                    <SearchPath path={searchMeta.path} selectedCount={selected.size} />
+                  </Fold>
                   <ol className="space-y-2.5">
                     {docs.map((d, i) => (
                       <DocCard
@@ -776,35 +916,94 @@ export function Workspace() {
                       />
                     ))}
                   </ol>
-                  <NearMissPanel meta={searchMeta} onAdd={addNearMiss} />
-                  <div className="pt-2">
+                  {(searchMeta.nearMiss.items.length > 0 || searchMeta.outOfScope.count > 0) && (
+                    <Fold summary={`아깝게 탈락한 문헌 ${searchMeta.nearMiss.items.length}건${searchMeta.outOfScope.count > 0 ? ` · 범위 밖 ${searchMeta.outOfScope.count}건` : ""}`}>
+                      <NearMissPanel meta={searchMeta} onAdd={addNearMiss} />
+                    </Fold>
+                  )}
+                  <div className="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 border bg-white px-4 py-3 shadow-[0_10px_30px_-12px_rgba(0,0,0,.35)]" style={{ borderColor: "var(--crimson)" }}>
+                    <span className="text-[13px] font-bold">선택한 문헌 {selected.size}건</span>
                     <Button arrow onClick={doCompare} loading={busy === "compare"} disabled={selected.size === 0}>
-                      선택한 문헌 {selected.size}건으로 비교표 만들기
+                      비교표 만들기
                     </Button>
                   </div>
                 </div>
               )}
 
-              {rows.length > 0 && (
-                <div className="mt-8 space-y-6 border-t pt-6" style={{ borderColor: "var(--hairline)" }}>
-                  {matrix && (
+              {/* ③ 비교 결과 */}
+              {view3 === "결과" && rows.length > 0 && (
+                <div className="space-y-5">
+                  <div className="flex flex-wrap items-end justify-between gap-3">
                     <div>
-                      <h3 className="mb-3 flex flex-wrap items-center gap-2 text-[15px] font-extrabold">
-                        구성 × 문헌 매트릭스 <Tag>AI 판단 · 서버 근거 확인</Tag>
-                      </h3>
-                      <MatrixView m={matrix} />
+                      <div className="font-[family-name:var(--font-display)] text-[26px] font-extrabold leading-tight">
+                        문헌 {matrix?.docs.length ?? selected.size}건 · 구성 {rows.length}개 비교
+                      </div>
+                      <div className="text-[12px]" style={{ color: "var(--ink-mute)" }}>
+                        ‘있음’은 원문 인용이 확인된 칸만 표시합니다. 칸을 누르면 근거가 보입니다.
+                      </div>
                     </div>
+                    <Button variant="ghost" onClick={() => setSub3("후보")}>
+                      ← 후보 다시 고르기
+                    </Button>
+                  </div>
+                  {matrix && <MatrixView m={matrix} />}
+                  <Fold summary={`구성별 요약 · 담당자 확인 ${rows.length - unconfirmed}/${rows.length}${changed.size > 0 ? ` · 판단 바뀐 구성 ${changed.size}개` : ""}`}>
+                    <CompareTable rows={rows} confirmed={confirmed} changed={changed} onToggle={toggleConfirm} />
+                  </Fold>
+                  {isInvalidity ? (
+                    <div className="flex flex-wrap items-center gap-2 border p-4" style={{ borderColor: "var(--rule)", background: "#fcfbfa" }}>
+                      <span className="mr-2 text-[13px] font-bold">무효자료 조사는 우리 발명 검토(4~6단계)와 따로 보고서로 정리합니다.</span>
+                      <Button
+                        onClick={() => {
+                          if (!invalidTarget || !matrix) return;
+                          const blob = new Blob([buildInvalidityMarkdown({ target: invalidTarget, matrix, rows, searchLog })], { type: "text/markdown;charset=utf-8" });
+                          const a = document.createElement("a");
+                          a.href = URL.createObjectURL(blob);
+                          a.download = `InPro_무효자료조사_${invalidTarget.doc.id}.md`;
+                          a.click();
+                          URL.revokeObjectURL(a.href);
+                          log("담당자", "무효자료 조사 보고서 내려받기");
+                        }}
+                      >
+                        보고서 내려받기
+                      </Button>
+                      <Button variant="ghost" onClick={() => changePurpose("둘 다")}>
+                        우리 발명 조사로 돌아가기
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <DistinctionLoop
+                        rounds={rounds}
+                        questions={followQs}
+                        answers={followAnswers}
+                        onAnswer={(q, a) => setFollowAnswers((m) => ({ ...m, [q]: a }))}
+                        onRun={doLoop}
+                        busy={busy === "loop"}
+                        inventor={form.inventor}
+                      >
+                        {followQs.length > 0 && (
+                          <ResearcherRequest
+                            title={intake.title}
+                            caseNo={caseNo}
+                            inventor={form.inventor}
+                            dept={form.dept}
+                            questions={followQs.map((q) => q.question)}
+                            sentAt={followSentAt}
+                            onSent={(channel) => {
+                              setFollowSentAt(new Date().toISOString());
+                              log("담당자", `선행기술 대비 재인터뷰 질문 ${followQs.length}개 발송 (${channel})`);
+                            }}
+                          />
+                        )}
+                      </DistinctionLoop>
+                      <div className="flex justify-end">
+                        <Button arrow onClick={() => go(4)}>
+                          다음: 특허성·사업성 검토
+                        </Button>
+                      </div>
+                    </>
                   )}
-                  <div>
-                  <h3 className="mb-2 text-sm font-extrabold">
-                    구성별 요약 · 담당자 확인 <Tag>가장 가까운 문헌 기준</Tag> {changed.size > 0 && <Tag tone="orange">판단 바뀐 구성 {changed.size}개</Tag>}
-                  </h3>
-                  <CompareTable rows={rows} confirmed={confirmed} changed={changed} onToggle={toggleConfirm} />
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Button onClick={() => go(4)}>다음: 특허성·사업성 검토 →</Button>
-                    <Button variant="ghost" onClick={() => go(2)}>새 선행기술 관련해 발명자에게 다시 묻기</Button>
-                  </div>
                 </div>
               )}
             </Card>
@@ -813,7 +1012,7 @@ export function Workspace() {
           {/* STEP 4 */}
           {step === 4 && intake && (
             <Card>
-              <StepTitle n={4} title="특허성·사업성 검토" sub="특허가 될지뿐 아니라, 우리 사업에 얼마나 중요한지와 경쟁사가 따라 할 가능성을 같이 봅니다. AI가 초안을 쓰고 최종 결정은 6단계에서 담당자가 합니다." />
+              <StepTitle n={4} title="특허성·사업성 검토" sub="특허가 될지, 사업에 중요한지, 경쟁사가 따라 할 수 있는지를 봅니다." />
               {!review ? (
                 <EmptyAction
                   title={`비교표 ${rows.length}줄을 바탕으로 사내 출원 검토서 초안을 씁니다.`}
@@ -821,6 +1020,7 @@ export function Workspace() {
                     `비교표: 공통 ${rows.filter((r) => r.relation === "공통").length} · 차이 후보 ${rows.filter((r) => r.relation === "차이 후보").length} · 근거 부족 ${rows.filter((r) => r.relation === "근거 부족").length}`,
                     "특허성 의견과 선행 문헌과 다른 점 후보",
                     "사업 중요도와 경쟁사 모방 가능성",
+                    "권리의 강도: 우회 어려움 · 침해 발견 · 입증 용이성",
                     "출원 방식 추천 (국내·해외·영업비밀·보류)",
                   ]}
                 >
@@ -844,6 +1044,7 @@ export function Workspace() {
                       <LevelMeter level={review.imitationRisk} />
                     </MetricCard>
                   </div>
+                  {review.strength && <StrengthCard strength={review.strength} matrix={matrix} />}
 
                   <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
                     <article className="ws-sheet space-y-5 p-6 sm:p-8">
@@ -870,7 +1071,10 @@ export function Workspace() {
                                 <span className="font-mono text-[12px] font-bold" style={{ color: "var(--crimson)" }}>
                                   {i + 1}
                                 </span>
-                                <span>{d}</span>
+                                <div className="min-w-0">
+                                  <span>{d}</span>
+                                  {review.differenceBasis?.[i] && <EvidenceLine ev={componentEvidence(matrix, review.differenceBasis[i])} />}
+                                </div>
                               </li>
                             ))}
                           </ol>
@@ -893,8 +1097,11 @@ export function Workspace() {
                         <div className="mt-1 font-[family-name:var(--font-display)] text-[30px] font-black leading-tight">{review.recommendation}</div>
                         <p className="mt-2 text-[12.5px] leading-relaxed opacity-90">{review.reason}</p>
                       </div>
+                      <Fold summary="이 추천에 쓴 사실">
+                        <BasisList title="" facts={recommendationBasis(intake, review, matrix, scope)} />
+                      </Fold>
                       <p className="text-[11.5px] leading-snug" style={{ color: "var(--ink-soft)" }}>
-                        최종 출원 방식은 6단계에서 담당자가 정하고 승인자가 확정합니다.
+                        AI 추천은 참고입니다. 최종 출원 방식은 6단계에서 담당자가 정하고 승인자가 확정합니다.
                       </p>
                       <div className="flex flex-col gap-2">
                         <Button arrow onClick={() => go(5)}>
@@ -914,11 +1121,16 @@ export function Workspace() {
           {/* STEP 5 */}
           {step === 5 && intake && review && (
             <Card>
-              <StepTitle n={5} title="권리범위 설계" sub="“무엇을 출원할까”보다 “경쟁사가 피해 가기 어려운 권리”를 먼저 봅니다. 청구항은 변리사가 쓰고, 여기서는 지켜야 할 핵심과 방향을 정합니다." />
+              <StepTitle n={5} title="권리범위 설계" sub="경쟁사라면 어떻게 피할지 먼저 봅니다. 청구항은 변리사가 씁니다." />
               {!scope ? (
                 <EmptyAction
                   title={`구성 ${intake.components.length}개를 권리범위 관점에서 나눕니다.`}
-                  items={["핵심 · 대체 가능 · 부가 구분", "구성마다 경쟁사가 대신 쓸 수 있는 수단", "경쟁사의 우회 난이도", "변리사와 논의할 권리범위 방향"]}
+                  items={[
+                    "① 경쟁사라면 이 권리를 어떻게 피할지 구성마다 시도",
+                    "② 바꿔도 같은 효과가 나면 대체 가능, 아무 시도도 안 통하면 핵심",
+                    "③ 구성마다 권리에 담는 방법 (독립항 중심 · 상위 개념 · 종속항)",
+                    "변리사와 논의할 권리범위 방향",
+                  ]}
                 >
                   <Button arrow onClick={doScope} loading={busy === "scope"}>
                     권리범위 설계안 만들기
@@ -928,7 +1140,7 @@ export function Workspace() {
                 <div className="space-y-6">
                   <div className="border-l-4 bg-white p-5" style={{ borderColor: "var(--crimson)" }}>
                     <div className="mb-1 flex items-center gap-2 text-[11px] font-bold" style={{ color: "var(--ink-mute)" }}>
-                      권리범위 방향 <Tag>AI 제안</Tag>
+                      권리범위 방향 <Tag>경쟁사 회피 시도를 바탕으로 한 AI 제안</Tag>
                     </div>
                     <p className="text-[15px] font-bold leading-relaxed">{scope.strategy}</p>
                   </div>
@@ -941,71 +1153,42 @@ export function Workspace() {
                     ))}
                   </div>
 
+                  {(() => {
+                    const conflict = strengthConflict(scope.items, review.strength?.designAround);
+                    if (!conflict || !review.strength) return null;
+                    return (
+                      <div className="border p-4 text-[13px]" style={{ borderColor: "var(--crimson)", background: "#faf3f3" }}>
+                        <b style={{ color: "var(--crimson)" }}>4단계 판단과 다릅니다.</b> 권리의 강도에서는 우회 어려움을 ‘{review.strength.designAround.level}’으로 봤지만, 경쟁사 관점에서 시도해 보니 ‘
+                        {conflict.item.componentName}’은(는) {conflict.item.role}입니다. {conflict.item.reason}
+                        <div className="mt-2">
+                          <Button
+                            variant="ghost"
+                            onClick={() => {
+                              setReview((r) =>
+                                r?.strength
+                                  ? {
+                                      ...r,
+                                      strength: {
+                                        ...r.strength,
+                                        designAround: { level: conflict.suggested, reason: `5단계 회피 검토: ${conflict.item.reason}`, basis: conflict.item.componentName },
+                                      },
+                                    }
+                                  : r
+                              );
+                              log("담당자", `권리의 강도 수정: 우회 어려움 → ${conflict.suggested} (5단계 회피 검토 반영)`);
+                            }}
+                          >
+                            권리의 강도에 반영 (우회 어려움 → {conflict.suggested})
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <ol className="space-y-3">
-                    {scope.items.map((it) => {
-                      const ease = it.designAround === "쉬움" ? 3 : it.designAround === "보통" ? 2 : 1;
-                      const risky = it.role === "핵심" && it.designAround === "쉬움";
-                      return (
-                        <li
-                          key={it.componentName}
-                          className="border bg-white"
-                          style={{ borderColor: it.role === "핵심" ? "var(--crimson)" : "var(--rule)", boxShadow: it.role === "핵심" ? "inset 3px 0 0 var(--crimson)" : "none" }}
-                        >
-                          <div className="grid gap-x-6 gap-y-4 p-4 md:grid-cols-[1fr_auto_150px] md:items-start">
-                            <div>
-                              <div className="text-[14.5px] font-bold">{it.componentName}</div>
-                              <p className="mt-1 text-[12.5px] leading-snug" style={{ color: "var(--ink-soft)" }}>
-                                {it.reason}
-                              </p>
-                            </div>
-                            <div className="flex" role="group" aria-label={`${it.componentName} 구분`}>
-                              {ROLES.map((r) => (
-                                <button
-                                  key={r}
-                                  type="button"
-                                  onClick={() => setRole(it.componentName, r)}
-                                  aria-pressed={it.role === r}
-                                  className="-ml-px border px-2.5 py-1.5 text-[12px] font-bold first:ml-0"
-                                  style={it.role === r ? { background: "var(--crimson)", color: "#fff", borderColor: "var(--crimson)", position: "relative" } : { borderColor: "var(--rule)", background: "#fff" }}
-                                >
-                                  {r}
-                                </button>
-                              ))}
-                            </div>
-                            <div className="md:order-last md:col-span-3 md:border-t md:pt-3" style={{ borderColor: "#eceae6" }}>
-                              <div className="mb-1.5 text-[11px] font-bold" style={{ color: "var(--ink-mute)" }}>
-                                경쟁사가 대신 쓸 수 있는 수단
-                              </div>
-                              <div className="flex flex-wrap gap-1.5">
-                                {splitAlternatives(it.alternatives).map((a) => (
-                                  <span key={a} className="border border-dashed px-2 py-0.5 text-[12px] font-bold" style={{ borderColor: "var(--crimson)", color: "var(--crimson)" }}>
-                                    {a}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                            <div>
-                              <div className="mb-1.5 text-[11px] font-bold" style={{ color: "var(--ink-mute)" }}>
-                                경쟁사 우회
-                              </div>
-                              <span className="inline-flex items-center gap-2">
-                                <span className="flex gap-0.5" aria-hidden="true">
-                                  {[1, 2, 3].map((n) => (
-                                    <i key={n} className="block h-2.5 w-4" style={{ background: n <= ease ? "var(--crimson)" : "#dad9d5" }} />
-                                  ))}
-                                </span>
-                                <span className="text-[12.5px] font-bold">{it.designAround}</span>
-                              </span>
-                            </div>
-                          </div>
-                          {risky && (
-                            <div className="border-t px-4 py-2.5 text-[12.5px] font-bold" style={{ borderColor: "var(--rule)", background: "#faf3f3", color: "var(--crimson)" }}>
-                              핵심 구성인데 우회가 쉽습니다. 대체 수단까지 포괄하는 넓은 표현으로 권리를 잡도록 변리사와 논의하세요.
-                            </div>
-                          )}
-                        </li>
-                      );
-                    })}
+                    {scope.items.map((it) => (
+                      <ScopeItemCard key={it.componentName} it={it} onRole={(r) => setRole(it.componentName, r)} />
+                    ))}
                   </ol>
 
                   <div className="flex flex-wrap items-center gap-3 border-t pt-5" style={{ borderColor: "var(--hairline)" }}>
@@ -1025,7 +1208,7 @@ export function Workspace() {
           {step === 6 && intake && review && (
             <Card className="print-area">
               <div className="no-print">
-                <StepTitle n={6} title="출원 결정·변리사 전달" sub="담당자가 출원 방식을 정하고 승인자가 확정하면, 승인된 버전만 묶어 변리사에게 넘깁니다." />
+                <StepTitle n={6} title="출원 결정·변리사 전달" sub="출원 방식을 정하고 승인하면, 승인된 버전만 변리사에게 넘깁니다." />
               </div>
 
               {!approvedAt && (
@@ -1071,8 +1254,13 @@ export function Workspace() {
                           );
                         })}
                       </div>
+                      <div className="mt-4">
+                        <Fold summary={`AI 추천 ‘${review.recommendation}’에 쓴 사실`}>
+                          <BasisList title="" facts={recommendationBasis(intake, review, matrix, scope)} />
+                        </Fold>
+                      </div>
                       <label htmlFor="decision-memo" className="mb-1.5 mt-4 block text-[13px] font-bold">
-                        결정 메모
+                        결정 메모{overrideNeedsMemo && <span style={{ color: "var(--crimson)" }}> * AI 추천과 다르게 정한 이유를 적어 주세요</span>}
                       </label>
                       <textarea
                         id="decision-memo"
@@ -1090,19 +1278,20 @@ export function Workspace() {
                       )}
                     </div>
 
-                    <div>
-                      <div className="mb-3 flex items-center justify-between gap-3">
-                        <span className="font-[family-name:var(--font-display)] text-[12px] font-bold uppercase tracking-[.12em]" style={{ color: "var(--ink-soft)" }}>
-                          비교표 담당자 확인
-                        </span>
-                        <span className="text-[12px] font-bold" style={{ color: unconfirmed ? "var(--crimson)" : "var(--ink)" }}>
-                          {rows.length - unconfirmed} / {rows.length}
-                        </span>
-                      </div>
-                      <div className="border bg-white p-3" style={{ borderColor: "var(--rule)" }}>
-                        <CompareTable rows={rows} confirmed={confirmed} changed={changed} onToggle={toggleConfirm} />
-                      </div>
-                    </div>
+                    <Fold
+                      defaultOpen={unconfirmed > 0}
+                      summary={
+                        <>
+                          비교표 담당자 확인{" "}
+                          <span style={{ color: unconfirmed ? "var(--crimson)" : "var(--ink)" }}>
+                            {rows.length - unconfirmed} / {rows.length}
+                          </span>
+                          {unconfirmed > 0 && <span className="ml-1.5 text-[11px] font-normal" style={{ color: "var(--crimson)" }}>승인 전에 모두 확인해야 합니다</span>}
+                        </>
+                      }
+                    >
+                      <CompareTable rows={rows} confirmed={confirmed} changed={changed} onToggle={toggleConfirm} />
+                    </Fold>
                   </div>
 
                   <aside className="lg:sticky lg:top-20 lg:self-start">
@@ -1116,7 +1305,7 @@ export function Workspace() {
                             [`비교표 확인 ${rows.length - unconfirmed}/${rows.length}`, unconfirmed === 0 && rows.length > 0],
                             ["특허성·사업성 검토서", !!review],
                             ["권리범위 설계", !!scope],
-                            [`출원 방식: ${decision}`, true],
+                            [`출원 방식: ${decision}${review && decision !== review.recommendation ? " (AI 추천과 다름)" : ""}`, !overrideNeedsMemo],
                           ] as [string, boolean][]
                         ).map(([label, ok]) => (
                           <li key={label} className="flex items-center gap-2">
@@ -1142,12 +1331,17 @@ export function Workspace() {
                           className="mb-3 w-full border px-3 py-2 text-[13.5px] outline-none focus:border-[var(--crimson)]"
                           style={{ borderColor: "var(--rule)" }}
                         />
-                        <Button arrow onClick={approve} disabled={!approver.trim() || unconfirmed > 0}>
+                        <Button arrow onClick={approve} disabled={!approver.trim() || unconfirmed > 0 || overrideNeedsMemo}>
                           승인하고 전달자료 만들기
                         </Button>
                         {unconfirmed > 0 && (
                           <p className="mt-2 text-[11.5px] font-bold" style={{ color: "var(--crimson)" }}>
                             비교표 {unconfirmed}줄을 먼저 확인해 주세요.
+                          </p>
+                        )}
+                        {overrideNeedsMemo && (
+                          <p className="mt-2 text-[11.5px] font-bold" style={{ color: "var(--crimson)" }}>
+                            AI 추천과 다르게 정한 이유를 결정 메모에 적어 주세요.
                           </p>
                         )}
                       </div>
@@ -1191,7 +1385,7 @@ export function Workspace() {
                             ["접수번호", caseNo ?? "-"],
                             ["기술 분야", handoff.intake.field],
                             ["개발 단계", stage],
-                            ["조사 목적", purpose],
+                            ["조사 목적", purposeLabel(purpose) + (purpose === "경쟁사 조사" && competitor ? ` · ${competitor}` : "")],
                             ["발명자", [form.inventor, form.dept].filter(Boolean).join(" / ") || "-"],
                             ["승인", `${handoff.approver} · ${new Date(handoff.approvedAt).toLocaleDateString("ko-KR")}`],
                             ["공개 예정", disclosure ? `${disclosure.type} ${disclosure.date}` : "없음"],
@@ -1217,6 +1411,38 @@ export function Workspace() {
                       )}
                     </header>
 
+                    {handoff.scope && (
+                      <DocSection n="00" title="차별점과 권리범위 요약" tag={<Tag>경쟁사 회피 검토 · 원문 확인된 비교표</Tag>}>
+                        <p className="mb-3 font-bold">{handoff.scope.strategy}</p>
+                        <div className="overflow-x-auto">
+                          <table className="w-full min-w-[560px] border-collapse text-[12.5px]">
+                            <thead>
+                              <tr style={{ color: "var(--ink-mute)" }}>
+                                {["구성", "구분", "선행 문헌 근거", "권리에 담는 방법"].map((h) => (
+                                  <th key={h} className="border-b px-2 py-1.5 text-left text-[11px] font-bold" style={{ borderColor: "var(--rule)" }}>
+                                    {h}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {distinctionSummary(handoff.scope, handoff.matrix).map((r) => (
+                                <tr key={r.componentName} className="align-top">
+                                  <td className="border-b px-2 py-2 font-bold" style={{ borderColor: "#eceae6" }}>{r.componentName}</td>
+                                  <td className="border-b px-2 py-2" style={{ borderColor: "#eceae6" }}>
+                                    <span className="px-1.5 py-0.5 text-[11px] font-bold" style={r.role === "핵심" ? { background: "var(--crimson)", color: "#fff" } : { background: "#efe2e2", color: "var(--crimson)" }}>
+                                      {r.role}
+                                    </span>
+                                  </td>
+                                  <td className="border-b px-2 py-2" style={{ borderColor: "#eceae6", color: "var(--ink-soft)" }}>{r.evidence}</td>
+                                  <td className="border-b px-2 py-2" style={{ borderColor: "#eceae6" }}>{r.advice}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </DocSection>
+                    )}
                     <DocSection n="01" title="발명 설명" tag={<Tag tone="green">연구원 확인</Tag>}>
                       <p className="whitespace-pre-line">{handoff.description}</p>
                       {qa.some((q) => q.answer.trim()) && (
@@ -1262,6 +1488,12 @@ export function Workspace() {
                       <p className="mt-1.5">
                         <b>사업 중요도</b> {handoff.review.businessImportance} · <b>경쟁사 모방 가능성</b> {handoff.review.imitationRisk}
                       </p>
+                      {handoff.review.strength && (
+                        <p className="mt-1.5">
+                          <b>권리의 강도</b> {overallStrength(handoff.review.strength).level} —{" "}
+                          {STRENGTH_AXES.map((a) => `${a.label} ${handoff.review.strength![a.key].level}`).join(" · ")}. {overallStrength(handoff.review.strength).text}
+                        </p>
+                      )}
                     </DocSection>
                     {handoff.scope && (
                       <DocSection n="05" title="권리범위 설계 방향" tag={<Tag>AI 제안 → 담당자 확정</Tag>}>
@@ -1272,7 +1504,8 @@ export function Workspace() {
                               <b>
                                 [{i.role}] {i.componentName}
                               </b>{" "}
-                              — 대체 수단: {i.alternatives} (우회 {i.designAround})
+                              — 경쟁사 회피 시도: {i.attempts?.length ? i.attempts.map((a) => `${a.method}(${a.keepsEffect})`).join(", ") : i.alternatives} (우회 {i.designAround})
+                              {i.advice && <> · {i.advice}</>}
                             </li>
                           ))}
                         </ul>

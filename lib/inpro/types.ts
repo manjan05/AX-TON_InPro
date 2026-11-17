@@ -1,5 +1,7 @@
 // InPro 사건(발명 1건) 데이터 모델. 기획안 5장 "이용 흐름 6단계"를 그대로 따른다.
 import type { CheckResult } from "./checklist";
+import type { RightsStrength } from "./strength";
+import type { DesignAroundAttempt } from "./designaround";
 
 export interface InventionComponent {
   id: string; // "C1", "C2" ...
@@ -67,9 +69,44 @@ export interface NearMiss {
   reason: string;
 }
 
-// 조사 목적: 출원 검토(우리 발명이 특허를 받을 수 있나) · 침해 위험(피해야 할 살아 있는 특허) · 둘 다(한 번에 두 판정)
-export const PURPOSES = ["둘 다", "출원 검토", "침해 위험"] as const;
+// 조사 목적 (IP 실무자 피드백 2: 목적마다 검색 대상과 검토 기준이 다르다)
+//  - 출원 검토 = 특허성 조사: 소멸·거절 포함 모든 선행기술로 신규성·진보성
+//  - 침해 위험 = FTO: 살아 있는 등록 특허만, 겹침이 큰 순서로 클레임 차트 확인
+//  - 경쟁사 조사: 특정 경쟁사 특허만, 우리 구성과 겹침·권리 현황
+//  - 무효자료 조사: 막고 있는 특허 하나를 정하고, 그보다 먼저 나온 문헌에서 그 특허 구성을 찾는다
+//  - 둘 다: 특허성 + FTO를 한 번에
+export const PURPOSES = ["둘 다", "출원 검토", "침해 위험", "경쟁사 조사", "무효자료 조사"] as const;
 export type Purpose = (typeof PURPOSES)[number];
+
+export const PURPOSE_INFO: Record<Purpose, { label: string; question: string; desc: string }> = {
+  "둘 다": {
+    label: "특허성 + FTO",
+    question: "한 번 조사로 두 판정을 봅니다",
+    desc: "모든 선행기술로 신규성·진보성을, 그중 등록 특허로 침해 위험을 봅니다. 등록 특허 상위 5건은 따로 보충합니다.",
+  },
+  "출원 검토": {
+    label: "특허성 조사",
+    question: "우리 발명이 특허를 받을 수 있나",
+    desc: "소멸·거절된 문헌까지 모든 선행기술과 비교합니다. 신규성·진보성을 봅니다.",
+  },
+  "침해 위험": {
+    label: "FTO",
+    question: "피해야 할 살아 있는 특허가 있나",
+    desc: "등록 특허만 비교합니다. 겹침이 큰 특허부터 클레임 차트로 확인할 순서를 정합니다.",
+  },
+  "경쟁사 조사": {
+    label: "경쟁사 조사",
+    question: "경쟁사는 이 분야에 어떤 특허를 가졌나",
+    desc: "경쟁사 한 곳의 특허만 봅니다. 우리 구성과 겹치는 특허와 살아 있는 권리를 정리합니다.",
+  },
+  "무효자료 조사": {
+    label: "무효자료 조사",
+    question: "막고 있는 특허를 무너뜨릴 자료가 있나",
+    desc: "대상 특허 하나를 고르면 그 청구항 구성을, 그보다 먼저 출원된 문헌에서 찾습니다.",
+  },
+};
+
+export const purposeLabel = (p: Purpose) => PURPOSE_INFO[p]?.label ?? p;
 
 // 담당자가 후보에서 뺄 때 고르는 이유 (조사 기록·학습 데이터)
 export const EXCLUDE_REASONS = ["관련 없음", "이미 검토함", "중복", "기타"] as const;
@@ -98,11 +135,13 @@ export type Level = "높음" | "보통" | "낮음";
 export interface ReviewDraft {
   summary: string;
   differences: string[];
+  differenceBasis?: string[]; // differences[i]의 근거 구성 이름 (매트릭스에서 문헌·인용을 찾는다)
   patentability: string; // 특허성 의견 (단정하지 않음)
   businessImportance: Level;
   businessReason: string;
   imitationRisk: Level; // 경쟁사가 모방·활용할 가능성
   imitationReason: string;
+  strength?: RightsStrength; // 권리의 강도: 우회 어려움 · 침해 발견 · 입증 용이성
   recommendation: Decision;
   reason: string;
   openIssues: string[];
@@ -117,6 +156,8 @@ export interface ScopeItem {
   reason: string;
   alternatives: string; // 경쟁사가 바꿔 쓸 수 있는 수단
   designAround: "어려움" | "보통" | "쉬움";
+  attempts?: DesignAroundAttempt[]; // 경쟁사 관점 회피 시도 (구분의 근거)
+  advice?: string; // 권리범위에 어떻게 담을지
 }
 
 export interface ScopeResult {

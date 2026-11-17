@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { CORPUS_NAME, DEFAULT_SCOPE, STATUS_AVAILABLE, explainedSearch, scopedCorpus } from "@/lib/inpro/search";
+import { CORPUS_NAME, DEFAULT_SCOPE, STATUS_AVAILABLE, explainedSearch, scopedCorpus, searchTargets } from "@/lib/inpro/search";
 import { PURPOSES, type InventionComponent, type Purpose } from "@/lib/inpro/types";
 import { LIMITS, readJson, tooLarge } from "@/lib/inpro/route-utils";
 
@@ -10,13 +10,32 @@ export async function GET(req: NextRequest) {
   const p = req.nextUrl.searchParams.get("purpose");
   const purpose: Purpose = PURPOSES.includes(p as Purpose) ? (p as Purpose) : "출원 검토";
   const f = scopedCorpus(usage || undefined, facet || undefined, purpose);
-  return NextResponse.json({ corpus: CORPUS_NAME, stages: f.stages, usages: f.usages, facets: f.facets, scope: { usage, facet }, statusAvailable: STATUS_AVAILABLE });
+  return NextResponse.json({
+    corpus: CORPUS_NAME,
+    stages: f.stages,
+    usages: f.usages,
+    facets: f.facets,
+    scope: { usage, facet },
+    statusAvailable: STATUS_AVAILABLE,
+    targets: searchTargets(usage || undefined, facet || undefined),
+  });
 }
 
 export async function POST(req: NextRequest) {
-  const parsed = await readJson<{ keywords?: string[]; usage?: string; facet?: string; components?: InventionComponent[]; purpose?: Purpose }>(req);
+  const parsed = await readJson<{
+    keywords?: string[];
+    usage?: string;
+    facet?: string;
+    components?: InventionComponent[];
+    purpose?: Purpose;
+    applicant?: string;
+    targetId?: string;
+  }>(req);
   if ("error" in parsed) return parsed.error;
-  const { keywords, usage, facet, components, purpose } = parsed.body;
+  const { keywords, usage, facet, components, purpose, applicant, targetId } = parsed.body;
+  if ([applicant, targetId].some((v) => v !== undefined && (typeof v !== "string" || v.length > 80))) {
+    return NextResponse.json({ error: "조사 대상 값이 잘못됐습니다." }, { status: 400 });
+  }
   if (!keywords?.length) {
     return NextResponse.json({ error: "검색 키워드가 없습니다." }, { status: 400 });
   }
@@ -33,6 +52,8 @@ export async function POST(req: NextRequest) {
     facet: facet || undefined,
     components,
     purpose: PURPOSES.includes(purpose as Purpose) ? purpose : "출원 검토",
+    applicant: applicant || undefined,
+    targetId: targetId || undefined,
   });
   return NextResponse.json({
     ...r,

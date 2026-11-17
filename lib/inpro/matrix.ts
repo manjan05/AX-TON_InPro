@@ -76,6 +76,32 @@ export function verifyCells(raw: RawCell[], components: InventionComponent[], do
 
 const rank: Record<Presence, number> = { 있음: 3, 일부: 2, "확인 필요": 1, 없음: 0 };
 
+// 목적별 판정 카드 이름: [첫 판정, 질문], [두 번째 판정, 질문], [남는 구성 이름, 설명]
+export function verdictLabels(mode: Purpose): { cards: [string, string][]; unique: [string, string] } {
+  switch (mode) {
+    case "침해 위험":
+      return {
+        cards: [["겹침이 큰 특허", "우리 구성이 살아 있는 특허에 얼마나 나오나"], ["클레임 차트 확인 순서", "상대 독립항의 모든 구성요소가 우리 제품에 있나"]],
+        unique: ["우리 제품만의 구성", "비교한 살아 있는 특허 어디에도 없는 구성"],
+      };
+    case "경쟁사 조사":
+      return {
+        cards: [["겹침이 큰 경쟁사 특허", "우리 구성이 경쟁사 특허에 얼마나 나오나"], ["경쟁사 권리 현황", "살아 있는 권리와 확인 순서"]],
+        unique: ["경쟁사에 없는 우리 구성", "경쟁사 특허 어디에도 없는 구성"],
+      };
+    case "무효자료 조사":
+      return {
+        cards: [["신규성 무효 근거", "먼저 나온 문헌 하나에 대상 특허 구성이 전부 있나"], ["진보성 무효 근거", "여러 문헌을 합치면 전부 나오나"]],
+        unique: ["무효 주장이 어려운 구성", "먼저 나온 문헌 어디에도 없는 대상 특허 구성"],
+      };
+    default:
+      return {
+        cards: [["신규성 위험", "문헌 하나에 우리 구성이 전부 있는가"], ["진보성 위험", "여러 문헌을 합치면 전부 나오는가"]],
+        unique: ["핵심 차별 구성", "어느 문헌에도 없는 구성"],
+      };
+  }
+}
+
 export function labelDocs(docs: { id: string; title: string; status?: string }[]): MatrixDoc[] {
   return docs.map((d, i) => ({ id: d.id, title: d.title, label: `문헌 ${String.fromCharCode(65 + i)}`, live: d.status === "등록" }));
 }
@@ -92,6 +118,25 @@ export function computeVerdict(
     const fto = computeVerdict(components, docs.filter((d) => d.live), cells, "침해 위험");
     return { ...app, mode: "둘 다", fto };
   }
+  if (purpose === "무효자료 조사") {
+    // 같은 계산(문헌 하나에 전부? 합치면 전부?)을 대상 특허 구성에 적용한다. 결론은 무효 근거 "후보"까지만.
+    const v = computeVerdict(components, docs, cells, "출원 검토");
+    const n = components.length;
+    const novelty: MatrixVerdict["novelty"] =
+      v.novelty.level === "높음"
+        ? { level: "높음", text: v.novelty.text.replace(/모든 구성\((\d+)개\)이 있습니다\. 그대로는 신규성이 부정될 수 있습니다\./, "대상 특허 구성 $1개가 모두 있습니다. 신규성 무효 근거 후보입니다.") }
+        : v.novelty.level === "주의"
+          ? { level: "주의", text: `${v.novelty.text.replace(/빠진 1개가 차별점이 됩니다\./, "")}빠진 1개를 다른 문헌으로 보완하면 진보성 무효 근거가 될 수 있습니다.` }
+          : { level: "낮음", text: v.novelty.text.replace("모든 구성이", `대상 특허 구성 ${n}개가 모두`) };
+    const inventive: MatrixVerdict["inventive"] =
+      v.inventive.level === "높음"
+        ? { level: "높음", text: v.inventive.text.replace("결합이 쉽다면 진보성이 부정될 수 있습니다.", "결합 동기가 있으면 진보성 무효 근거 후보입니다.") }
+        : v.inventive.level === "주의"
+          ? { level: "주의", text: "모든 구성이 어느 문헌에든 일부라도 나옵니다. '일부' 칸이 같은 기술인지 원문을 대조해야 합니다." }
+          : { level: "낮음", text: `${v.unique.join(", ")}은(는) 먼저 나온 문헌 어디에도 없습니다. 이 구성 때문에 무효 주장이 어렵습니다.` };
+    return { ...v, mode: purpose, novelty, inventive };
+  }
+
   const at = (c: string, d: string) => cells.find((x) => x.componentId === c && x.docId === d)?.presence ?? "확인 필요";
   const n = components.length;
   const watch = docs
@@ -105,6 +150,24 @@ export function computeVerdict(
   const uniqueNames = components
     .filter((c) => docs.every((d) => rank[at(c.id, d.id)] < rank["일부"]))
     .map((c) => `${c.id} ${c.name}`);
+
+  if (purpose === "경쟁사 조사") {
+    const top = watch[0];
+    const topDoc = top ? docs.find((d) => d.label === top.label) : undefined;
+    const live = docs.filter((d) => d.live).length;
+    const level: RiskLevel = !top || !topDoc?.live ? "낮음" : top.full === n ? "높음" : top.full >= 1 && top.full + top.partial >= Math.max(1, n - 1) ? "주의" : "낮음";
+    const overlap: MatrixVerdict["novelty"] = !top
+      ? { level: "낮음", text: "비교한 경쟁사 특허가 없습니다." }
+      : {
+          level,
+          text: `가장 많이 겹치는 ${top.label}: 있음 ${top.full} · 일부 ${top.partial} / ${n} (${topDoc?.live ? "등록, 살아 있는 권리" : "권리 없음 · 기술 참고"}).${level !== "낮음" ? " FTO로 클레임 차트를 확인하세요." : ""}`,
+        };
+    const status: MatrixVerdict["inventive"] = {
+      level: live === 0 ? "낮음" : level === "낮음" ? "낮음" : "주의",
+      text: `비교한 경쟁사 특허 ${docs.length}건 중 살아 있는 권리 ${live}건. 겹침 순서: ${watch.map((w) => `${w.label}(${w.full}/${n})`).join(" → ")}.`,
+    };
+    return { mode: purpose, novelty: overlap, inventive: status, unique: uniqueNames, watch };
+  }
 
   if (purpose === "침해 위험") {
     // 우리 구성이 상대 특허에 있다고 해서 침해는 아니다. 침해는 상대 독립항의 "모든" 구성요소가
