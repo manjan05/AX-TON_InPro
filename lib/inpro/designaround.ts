@@ -5,11 +5,28 @@ import type { Level, ScopeItem, ScopeRole } from "./types";
 
 export type KeepsEffect = "유지" | "일부" | "안 됨";
 
+export interface AttemptEvidence {
+  count: number; // 데이터의 실제 특허 중 같은 표현이 나오는 건수
+  docs: { id: string; title: string; status?: string }[];
+}
+
 export interface DesignAroundAttempt {
   method: string; // 경쟁사가 바꿔 쓸 수단
-  keepsEffect: KeepsEffect; // 바꿔도 같은 효과가 나는가
+  keepsEffect: KeepsEffect; // AI가 본, 바꿔도 같은 효과가 나는가
   why: string;
+  evidence?: AttemptEvidence; // 서버가 실제 특허에서 찾은 근거 (같은 수단이 실제로 쓰였는지만 보여준다)
+  confirmed?: "같음" | "다름"; // 발명자가 확인한 결과. 있으면 AI 추정보다 우선한다
 }
+
+// AI 추정 → 발명자 확인이 있으면 그 결과를 쓴다
+export const effectOf = (a: DesignAroundAttempt): KeepsEffect => (a.confirmed === "같음" ? "유지" : a.confirmed === "다름" ? "안 됨" : a.keepsEffect);
+
+// 이 시도를 믿을 근거: 발명자 확인 > 실제 특허 > AI 추정
+export type Trust = "발명자 확인" | "실제 특허" | "AI 추정";
+export const trustOf = (a: DesignAroundAttempt): Trust => (a.confirmed ? "발명자 확인" : a.evidence && a.evidence.count > 0 ? "실제 특허" : "AI 추정");
+
+// 발명자에게 확인받아야 할 시도: 효과가 이어진다고 본 것 중 근거 없는 것
+export const needsConfirm = (a: DesignAroundAttempt) => !a.confirmed && effectOf(a) !== "안 됨" && trustOf(a) === "AI 추정";
 
 export interface RawScopeItem {
   componentName: string;
@@ -17,9 +34,9 @@ export interface RawScopeItem {
   attempts: DesignAroundAttempt[];
 }
 
-export function classify(raw: RawScopeItem): Pick<ScopeItem, "role" | "designAround" | "reason" | "alternatives" | "advice" | "attempts"> {
-  const keeps = raw.attempts.filter((a) => a.keepsEffect === "유지");
-  const partial = raw.attempts.filter((a) => a.keepsEffect === "일부");
+export function classify(raw: RawScopeItem): Pick<ScopeItem, "role" | "designAround" | "reason" | "alternatives" | "advice" | "attempts" | "essential"> {
+  const keeps = raw.attempts.filter((a) => effectOf(a) === "유지");
+  const partial = raw.attempts.filter((a) => effectOf(a) === "일부");
   const designAround: ScopeItem["designAround"] = keeps.length ? "쉬움" : partial.length ? "보통" : "어려움";
   const role: ScopeRole = !raw.essential ? "부가" : keeps.length ? "대체 가능" : "핵심";
   const names = (xs: DesignAroundAttempt[]) => xs.map((a) => `‘${a.method}’`).join(", ");
@@ -39,7 +56,12 @@ export function classify(raw: RawScopeItem): Pick<ScopeItem, "role" | "designAro
       : role === "대체 가능"
         ? `구체적 형태 대신 상위 개념으로 표현하거나, ${names(keeps)}을(를) 실시예로 함께 적어 회피를 막습니다.`
         : "종속항이나 실시예로 둡니다.";
-  return { role, designAround, reason, alternatives: raw.attempts.map((a) => a.method).join(", "), advice, attempts: raw.attempts };
+  return { role, designAround, reason, alternatives: raw.attempts.map((a) => a.method).join(", "), advice, attempts: raw.attempts, essential: raw.essential };
+}
+
+// 발명자 확인을 반영해 구분을 다시 정한다
+export function reclassify(item: ScopeItem, attempts: DesignAroundAttempt[]): ScopeItem {
+  return { ...item, ...classify({ componentName: item.componentName, essential: item.essential ?? item.role !== "부가", attempts }) };
 }
 
 // 4단계 '권리의 강도'와 어긋나는지: 4단계는 우회 어려움을 높게 봤는데, 그 근거 구성이 실제로는 대체 가능할 때

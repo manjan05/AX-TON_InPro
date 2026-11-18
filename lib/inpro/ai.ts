@@ -6,6 +6,7 @@ import type { RawCell } from "./matrix";
 import { GLOSSARY } from "./search";
 import { CHECKLIST, missingFrom, verifyChecklist, type ChecklistId } from "./checklist";
 import { classify } from "./designaround";
+import { attemptEvidence } from "./search";
 
 const intakeSchema = z.object({
   title: z.string().describe("발명의 가칭, 20자 이내"),
@@ -228,7 +229,13 @@ ${intake.components.map((c) => `- ${c.name}: ${c.description}`).join("\n")}
 ${table(rows)}`,
   });
   const names = new Set(intake.components.map((c) => c.name));
-  const items = output.items.filter((i) => names.has(i.componentName)).map((i) => ({ componentName: i.componentName, ...classify(i) }));
+  const items = output.items
+    .filter((i) => names.has(i.componentName))
+    .map((i) => ({
+      componentName: i.componentName,
+      // 서버가 각 회피 시도를 실제 특허 데이터에서 찾아 근거를 붙인다
+      ...classify({ ...i, attempts: i.attempts.map((a) => ({ ...a, evidence: attemptEvidence(a.method) })) }),
+    }));
   return { strategy: output.strategy, items };
 }
 

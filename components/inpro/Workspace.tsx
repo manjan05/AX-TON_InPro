@@ -30,7 +30,7 @@ import { Fold, SearchRun, SubRail, type Sub3 } from "./Parts3";
 import { BasisList, EvidenceLine } from "./Evidence";
 import { componentEvidence, distinctionSummary, recommendationBasis } from "@/lib/inpro/basis";
 import { ScopeItemCard } from "./ScopeItemCard";
-import { strengthConflict } from "@/lib/inpro/designaround";
+import { effectOf, needsConfirm, reclassify, strengthConflict, trustOf } from "@/lib/inpro/designaround";
 import { STRENGTH_AXES, overallStrength } from "@/lib/inpro/strength";
 import { EMPTY_FORM, EXAMPLE_FORM, IntakeForm, composeDescription, type IntakeFormState } from "./IntakeForm";
 import { ChecklistView } from "./ChecklistView";
@@ -93,6 +93,7 @@ export function Workspace() {
   const [invalidTarget, setInvalidTarget] = useState<InvalidityTarget | null>(null);
   const [followAnswers, setFollowAnswers] = useState<Record<string, string>>({});
   const [followSentAt, setFollowSentAt] = useState<string | null>(null);
+  const [scopeSentAt, setScopeSentAt] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [searchMeta, setSearchMeta] = useState<SearchMeta | null>(null);
   const [excluded, setExcluded] = useState<Record<string, ExcludeReason>>({});
@@ -392,6 +393,24 @@ export function Workspace() {
     const core = result.items.filter((i) => i.role === "핵심").length;
     log("InPro AI", `권리범위 설계안: 핵심 구성 ${core}개`);
   }
+
+  // 회피 시도를 발명자가 확인하면 AI 추정 대신 그 결과로 구분을 다시 계산한다
+  const confirmAttempt = (componentName: string, method: string, v: "같음" | "다름" | null) => {
+    setScope((s) =>
+      s
+        ? {
+            ...s,
+            items: s.items.map((i) =>
+              i.componentName !== componentName
+                ? i
+                : reclassify(i, (i.attempts ?? []).map((a) => (a.method === method ? { ...a, confirmed: v ?? undefined } : a)))
+            ),
+          }
+        : s
+    );
+    setApprovedAt(null);
+    log("담당자", v ? `발명자 확인 반영: ${componentName} · ${method} → 효과 ${v}` : `발명자 확인 취소: ${componentName} · ${method}`);
+  };
 
   const setRole = (name: string, role: ScopeRole) => {
     setScope((s) => (s ? { ...s, items: s.items.map((i) => (i.componentName === name ? { ...i, role } : i)) } : s));
@@ -1165,6 +1184,42 @@ export function Workspace() {
                   </div>
 
                   {(() => {
+                    const all = scope.items.flatMap((i) => (i.attempts ?? []).map((a) => ({ i, a })));
+                    const ask = all.filter(({ a }) => needsConfirm(a));
+                    const counts = { 확인: all.filter(({ a }) => trustOf(a) === "발명자 확인").length, 실제: all.filter(({ a }) => trustOf(a) === "실제 특허").length, 추정: all.filter(({ a }) => trustOf(a) === "AI 추정").length };
+                    return (
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap items-center gap-2 text-[12px]" style={{ color: "var(--ink-soft)" }}>
+                          <b style={{ color: "var(--ink)" }}>회피 시도 {all.length}개의 근거</b>
+                          <span className="px-1.5 py-0.5 text-[10.5px] font-bold" style={{ background: "var(--ink)", color: "#fff" }}>발명자 확인 {counts.확인}</span>
+                          <span className="px-1.5 py-0.5 text-[10.5px] font-bold" style={{ background: "#e5f4e4", color: "#2c5f2a" }}>실제 특허 {counts.실제}</span>
+                          <span className="px-1.5 py-0.5 text-[10.5px] font-bold" style={{ border: "1px dashed var(--ink-mute)" }}>AI 추정 {counts.추정}</span>
+                          <span>AI 추정은 근거가 없으니, 발명자에게 확인하세요.</span>
+                        </div>
+                        {ask.length > 0 && (
+                          <Fold summary={`발명자에게 확인할 것 ${ask.length}개 · AI가 추정한 대체 수단`}>
+                            <ResearcherRequest
+                              title={intake.title}
+                              caseNo={caseNo}
+                              inventor={form.inventor}
+                              dept={form.dept}
+                              questions={ask.map(({ i, a }) => `"${i.componentName}"을(를) '${a.method}'(으)로 바꿔도 같은 효과가 나나요? 다르다면 무엇이 다른가요?`)}
+                              sentAt={scopeSentAt}
+                              onSent={(channel) => {
+                                setScopeSentAt(new Date().toISOString());
+                                log("담당자", `대체 수단 확인 질문 ${ask.length}개 발송 (${channel})`);
+                              }}
+                            />
+                            <p className="mt-2 text-[11.5px]" style={{ color: "var(--ink-mute)" }}>
+                              답을 받으면 아래 카드의 회피 시도에서 ‘발명자 확인 · 효과 같음/다름’을 눌러 반영하세요. 구분이 다시 계산됩니다.
+                            </p>
+                          </Fold>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {(() => {
                     const conflict = strengthConflict(scope.items, review.strength?.designAround);
                     if (!conflict || !review.strength) return null;
                     return (
@@ -1198,7 +1253,7 @@ export function Workspace() {
 
                   <ol className="space-y-3">
                     {scope.items.map((it) => (
-                      <ScopeItemCard key={it.componentName} it={it} onRole={(r) => setRole(it.componentName, r)} />
+                      <ScopeItemCard key={it.componentName} it={it} onRole={(r) => setRole(it.componentName, r)} onConfirm={(m, v) => confirmAttempt(it.componentName, m, v)} />
                     ))}
                   </ol>
 
@@ -1515,7 +1570,7 @@ export function Workspace() {
                               <b>
                                 [{i.role}] {i.componentName}
                               </b>{" "}
-                              — 경쟁사 회피 시도: {i.attempts?.length ? i.attempts.map((a) => `${a.method}(${a.keepsEffect})`).join(", ") : i.alternatives} (우회 {i.designAround})
+                              — 경쟁사 회피 시도: {i.attempts?.length ? i.attempts.map((a) => `${a.method}(${effectOf(a)}·${trustOf(a)})`).join(", ") : i.alternatives} (우회 {i.designAround})
                               {i.advice && <> · {i.advice}</>}
                             </li>
                           ))}

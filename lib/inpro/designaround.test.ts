@@ -34,3 +34,33 @@ describe("strengthConflict", () => {
     expect(strengthConflict([item], { level: "낮음", basis: "2차 주름" })).toBeNull();
   });
 });
+
+import { effectOf, needsConfirm, reclassify, trustOf } from "./designaround";
+import { attemptEvidence } from "./search";
+
+describe("attempt trust", () => {
+  it("shows real-patent evidence only when the same expression exists in the data", () => {
+    expect(attemptEvidence("엠보싱").count).toBeGreaterThan(0);
+    expect(attemptEvidence("양자 나노 플라즈마 코팅").count).toBe(0);
+  });
+
+  it("ranks trust: inventor confirmation > real patent > AI guess, and asks only about unsupported guesses", () => {
+    const guess = attempt("M자 주름", "유지");
+    expect(trustOf(guess)).toBe("AI 추정");
+    expect(needsConfirm(guess)).toBe(true);
+    expect(trustOf({ ...guess, evidence: { count: 2, docs: [] } })).toBe("실제 특허");
+    expect(needsConfirm({ ...guess, evidence: { count: 2, docs: [] } })).toBe(false);
+    expect(trustOf({ ...guess, confirmed: "다름" })).toBe("발명자 확인");
+    expect(needsConfirm(attempt("접착 비드", "안 됨"))).toBe(false);
+  });
+
+  it("lets the inventor's confirmation override the AI and recompute the role", () => {
+    const first = classify({ componentName: "2차 주름", essential: true, attempts: [attempt("M자 주름", "유지")] });
+    const item = { componentName: "2차 주름", ...first } as ScopeItem;
+    expect(item.role).toBe("대체 가능");
+    const fixed = reclassify(item, item.attempts!.map((a) => ({ ...a, confirmed: "다름" as const })));
+    expect(effectOf(fixed.attempts![0])).toBe("안 됨");
+    expect(fixed.role).toBe("핵심");
+    expect(fixed.designAround).toBe("어려움");
+  });
+});

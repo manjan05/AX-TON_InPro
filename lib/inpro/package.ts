@@ -2,6 +2,7 @@ import type { ComparisonRow, Decision, Disclosure, IntakeResult, ReviewDraft, Sc
 import { disclosureStatus } from "./disclosure";
 import { STRENGTH_AXES, overallStrength } from "./strength";
 import { componentEvidence, distinctionSummary, evidenceText, recommendationBasis } from "./basis";
+import { effectOf, trustOf } from "./designaround";
 import { verdictLabels, type Matrix } from "./matrix";
 
 export interface CaseEvent {
@@ -161,7 +162,7 @@ export function buildHandoffMarkdown(input: HandoffInput): string {
           "|---|---|---|---|---|",
           ...scope.items.map(
             (i) =>
-              `| ${i.componentName} | ${i.role} | ${i.attempts?.length ? i.attempts.map((a) => `${a.method}(${a.keepsEffect})`).join(", ") : i.alternatives} | ${i.designAround} | ${i.advice ?? ""} |`
+              `| ${i.componentName} | ${i.role} | ${i.attempts?.length ? i.attempts.map((a) => `${a.method}(${effectOf(a)}·${trustOf(a)})`).join(", ") : i.alternatives} | ${i.designAround} | ${i.advice ?? ""} |`
           ),
           "",
         ]

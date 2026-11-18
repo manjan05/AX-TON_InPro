@@ -3,7 +3,7 @@ import patents from "@/data/patents.json";
 import airFilter from "@/data/domains/air-filter.json";
 import airFilterGlossary from "@/data/domains/air-filter-glossary.json";
 import type { InventionComponent, NearMiss, PriorDoc, Purpose } from "./types";
-import { filingYear, funnel, hasStatus, isLive, type FunnelResult, type RawDoc } from "./corpus";
+import { filingYear, funnel, hasStatus, isLive, sourceText, type FunnelResult, type RawDoc } from "./corpus";
 import { countMatches, nearMisses, rankDocs, type Glossary } from "./scoring";
 
 export type { RawDoc };
@@ -29,6 +29,34 @@ export function scopedCorpus(usage?: string, facet?: string, purpose: Purpose = 
 }
 
 export const STATUS_AVAILABLE = hasStatus(CORPUS);
+
+// 경쟁사의 회피 시도가 실제 특허에도 쓰였는지 찾는다. 같은 표현이 나오는 문헌만 센다(보수적).
+// 이것은 "그 수단이 현실에 있다"는 뜻일 뿐, 우리 발명과 같은 효과가 난다는 증명은 아니다.
+export function attemptEvidence(method: string, corpus: RawDoc[] = CORPUS) {
+  const norm = (s: string) => s.replace(/[\s·,.()"'“”‘’\-]/g, "");
+  const m = norm(method);
+  const tokens = method
+    .split(/[\s·,/]+/)
+    .map((t) => norm(t))
+    .filter((t) => t.length >= 2);
+  if (m.length < 2) return { count: 0, docs: [] as { id: string; title: string; status?: string }[] };
+  // 표현 전체가 그대로 나오거나, 모든 단어가 한 문장 안(60자 이내)에 모여 있을 때만 인정한다
+  const near = (t: string) => {
+    if (tokens.length < 2) return false;
+    let from = t.indexOf(tokens[0]);
+    while (from !== -1) {
+      const win = t.slice(Math.max(0, from - 60), from + 60 + tokens[0].length);
+      if (tokens.every((tok) => win.includes(tok))) return true;
+      from = t.indexOf(tokens[0], from + 1);
+    }
+    return false;
+  };
+  const hits = corpus.filter((d) => {
+    const t = norm(sourceText(d));
+    return t.includes(m) || near(t);
+  });
+  return { count: hits.length, docs: hits.slice(0, 2).map((d) => ({ id: d.id, title: d.title, status: d.status })) };
+}
 
 // 경쟁사 조사·무효자료 조사의 대상 고르기: 조사 범위 안의 출원인 목록과 살아 있는 특허 목록
 export function searchTargets(usage?: string, facet?: string) {

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import type { KeepsEffect } from "@/lib/inpro/designaround";
+import { effectOf, trustOf, type DesignAroundAttempt, type KeepsEffect, type Trust } from "@/lib/inpro/designaround";
 import type { ScopeItem, ScopeRole } from "@/lib/inpro/types";
 import { splitAlternatives } from "./StepParts";
 
@@ -12,8 +12,23 @@ const EFFECT: Record<KeepsEffect, { label: string; style: React.CSSProperties }>
   "안 됨": { label: "효과 없음 → 회피 실패", style: { border: "1px solid var(--rule)", color: "var(--ink-soft)" } },
 };
 
-// 구성 하나: 먼저 결론(구분 · 우회 · 권리에 담는 방법), 경쟁사의 회피 시도와 이유는 눌러서 본다
-export function ScopeItemCard({ it, onRole }: { it: ScopeItem; onRole: (r: ScopeRole) => void }) {
+const TRUST: Record<Trust, { style: React.CSSProperties; hint: string }> = {
+  "발명자 확인": { style: { background: "var(--ink)", color: "#fff" }, hint: "발명자가 직접 확인했습니다" },
+  "실제 특허": { style: { background: "#e5f4e4", color: "#2c5f2a" }, hint: "데이터의 실제 특허에 비슷한 표현이 있습니다. 같은 효과인지는 확인이 필요합니다" },
+  "AI 추정": { style: { border: "1px dashed var(--ink-mute)", color: "var(--ink-soft)" }, hint: "AI의 추정입니다. 발명자·변리사 확인이 필요합니다" },
+};
+
+// 구성 하나: 먼저 결론(구분 · 우회 · 권리에 담는 방법), 경쟁사의 회피 시도는 눌러서 본다.
+// 회피 시도마다 믿을 근거(발명자 확인 / 실제 특허 / AI 추정)를 표시하고, 발명자 확인을 받으면 구분이 다시 계산된다.
+export function ScopeItemCard({
+  it,
+  onRole,
+  onConfirm,
+}: {
+  it: ScopeItem;
+  onRole: (r: ScopeRole) => void;
+  onConfirm: (method: string, v: "같음" | "다름" | null) => void;
+}) {
   const [open, setOpen] = useState(false);
   const core = it.role === "핵심";
   const attempts = it.attempts ?? [];
@@ -51,17 +66,9 @@ export function ScopeItemCard({ it, onRole }: { it: ScopeItem; onRole: (r: Scope
         {open && (
           <div className="mt-3 space-y-3 border-t pt-3" style={{ borderColor: "#eceae6" }}>
             {attempts.length ? (
-              <ul className="space-y-1.5">
+              <ul className="space-y-3">
                 {attempts.map((a) => (
-                  <li key={a.method} className="grid gap-x-3 gap-y-0.5 text-[12.5px] sm:grid-cols-[150px_auto_1fr] sm:items-baseline">
-                    <b className="border border-dashed px-2 py-0.5 text-center" style={{ borderColor: "var(--crimson)", color: "var(--crimson)" }}>
-                      {a.method}
-                    </b>
-                    <span className="w-fit px-1.5 py-0.5 text-[11px] font-bold" style={EFFECT[a.keepsEffect].style}>
-                      {EFFECT[a.keepsEffect].label}
-                    </span>
-                    <span style={{ color: "var(--ink-soft)" }}>{a.why}</span>
-                  </li>
+                  <AttemptRow key={a.method} a={a} onConfirm={onConfirm} />
                 ))}
               </ul>
             ) : (
@@ -77,6 +84,51 @@ export function ScopeItemCard({ it, onRole }: { it: ScopeItem; onRole: (r: Scope
               <b style={{ color: "var(--ink)" }}>{it.role}인 이유 ·</b> {it.reason}
             </p>
           </div>
+        )}
+      </div>
+    </li>
+  );
+}
+
+function AttemptRow({ a, onConfirm }: { a: DesignAroundAttempt; onConfirm: (method: string, v: "같음" | "다름" | null) => void }) {
+  const eff = effectOf(a);
+  const trust = trustOf(a);
+  return (
+    <li className="text-[12.5px]">
+      <div className="grid gap-x-3 gap-y-0.5 sm:grid-cols-[150px_auto_1fr] sm:items-baseline">
+        <b className="border border-dashed px-2 py-0.5 text-center" style={{ borderColor: "var(--crimson)", color: "var(--crimson)" }}>
+          {a.method}
+        </b>
+        <span className="w-fit px-1.5 py-0.5 text-[11px] font-bold" style={EFFECT[eff].style}>
+          {EFFECT[eff].label}
+        </span>
+        <span style={{ color: "var(--ink-soft)" }}>{a.why}</span>
+      </div>
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 sm:pl-[162px]">
+        <span className="px-1.5 py-0.5 text-[10.5px] font-bold" style={TRUST[trust].style} title={TRUST[trust].hint}>
+          {trust}
+        </span>
+        {a.evidence && a.evidence.count > 0 && !a.confirmed && (
+          <span className="text-[11.5px]" style={{ color: "var(--ink-soft)" }}>
+            실제 특허 {a.evidence.count}건에 비슷한 표현 · {a.evidence.docs.map((d) => `${d.title.slice(0, 22)}${d.status ? `(${d.status})` : ""}`).join(", ")}
+          </span>
+        )}
+        {a.confirmed ? (
+          <span className="text-[11.5px]">
+            발명자 확인: <b>효과 {a.confirmed}</b>{" "}
+            <button type="button" onClick={() => onConfirm(a.method, null)} className="underline underline-offset-2" style={{ color: "var(--ink-soft)" }}>
+              취소
+            </button>
+          </span>
+        ) : (
+          <span className="flex items-center gap-1.5 text-[11.5px]" style={{ color: "var(--ink-soft)" }}>
+            발명자 확인
+            {(["같음", "다름"] as const).map((v) => (
+              <button key={v} type="button" onClick={() => onConfirm(a.method, v)} className="border px-1.5 py-0.5 font-bold transition hover:border-[var(--crimson)] hover:text-[var(--crimson)]" style={{ borderColor: "var(--rule)" }}>
+                효과 {v}
+              </button>
+            ))}
+          </span>
         )}
       </div>
     </li>

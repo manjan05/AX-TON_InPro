@@ -157,6 +157,7 @@ export interface ScopeItem {
   alternatives: string; // 경쟁사가 바꿔 쓸 수 있는 수단
   designAround: "어려움" | "보통" | "쉬움";
   attempts?: DesignAroundAttempt[]; // 경쟁사 관점 회피 시도 (구분의 근거)
+  essential?: boolean; // 발명의 효과를 내는 데 꼭 필요한 구성인가 (구분을 다시 계산할 때 쓴다)
   advice?: string; // 권리범위에 어떻게 담을지
 }
 
