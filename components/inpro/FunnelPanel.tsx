@@ -43,48 +43,20 @@ export function FunnelPanel({
   }, [scope, onScope, purpose]);
 
   if (!info) return null;
-  const max = info.stages[0]?.count || 1;
   const isDomain = info.usages.length > 0 || info.facets.length > 0;
 
   return (
     <div className="mb-6 border bg-white p-4" style={{ borderColor: "var(--rule)" }}>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <div className="text-[13px] font-extrabold">조사 범위 좁히기</div>
+        <div className="text-[13px] font-extrabold">조사 범위 <span className="ml-1 text-[11.5px] font-normal" style={{ color: "var(--ink-mute)" }}>어디에서 찾을지 고르세요</span></div>
         <div className="font-mono text-[10.5px]" style={{ color: "var(--ink-mute)" }}>
           {info.corpus}
         </div>
       </div>
 
-      <ol className="flex items-stretch gap-1.5 max-sm:flex-col">
-        {info.stages.map((s, i) => {
-          const last = i === info.stages.length - 1;
-          return (
-            <li key={s.label} className="flex flex-1 items-center gap-1.5">
-              <div
-                className="flex-1 px-3 py-2.5"
-                style={last ? { background: "var(--crimson)", color: "#fff" } : { background: "var(--paper)", color: "var(--ink)" }}
-              >
-                <div className="text-[11px] font-bold opacity-80">{s.label}</div>
-                <div className="font-[family-name:var(--font-display)] text-[24px] font-bold leading-tight">
-                  {s.count.toLocaleString()}
-                  <span className="ml-0.5 text-[12px] font-normal">건</span>
-                </div>
-                <div className="mt-1 h-1" style={{ background: last ? "rgba(255,255,255,.3)" : "var(--rule)" }}>
-                  <div className="h-full" style={{ width: `${Math.max(3, (s.count / max) * 100)}%`, background: last ? "#fff" : "var(--ink-mute)" }} />
-                </div>
-              </div>
-              {!last && (
-                <span className="text-lg max-sm:hidden" style={{ color: "var(--crimson)" }}>
-                  →
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ol>
 
       {isDomain ? (
-        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-[12px]">
+        <div className="flex flex-wrap gap-x-5 gap-y-2 text-[12px]">
           {(
             [
               ["용도", "usage", info.usages],

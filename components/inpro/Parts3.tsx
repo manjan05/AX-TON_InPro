@@ -55,3 +55,39 @@ export function Fold({ summary, children, defaultOpen = false }: { summary: Reac
     </details>
   );
 }
+
+// 선행조사 실행을 누르면 조사가 좁혀지는 과정을 한 단계씩 보여준다
+export function SearchRun({ steps, shown }: { steps: { label: string; count: number; note: string }[]; shown: number }) {
+  return (
+    <div className="mt-5 border bg-white p-4" style={{ borderColor: "var(--crimson)" }} role="status" aria-live="polite">
+      <div className="mb-3 text-[13px] font-extrabold">조사 중…</div>
+      <ol className="space-y-2">
+        {steps.map((s, i) => {
+          const done = i < shown;
+          const now = i === shown;
+          if (i > shown) return null;
+          return (
+            <li key={s.label} className="flex items-baseline gap-3 text-[13px]">
+              <span className="w-4 text-center font-bold" style={{ color: done ? "var(--crimson)" : "var(--ink-mute)" }}>
+                {done ? "✓" : now ? "…" : ""}
+              </span>
+              <span className="min-w-0 flex-1">
+                <b>{s.label}</b>
+                <span className="ml-2 text-[11.5px]" style={{ color: "var(--ink-soft)" }}>
+                  {done ? s.note : ""}
+                </span>
+              </span>
+              <span className="font-[family-name:var(--font-display)] text-[20px] font-bold" style={{ color: done ? "var(--ink)" : "var(--ink-mute)" }}>
+                {done ? s.count.toLocaleString() : "…"}
+                <span className="ml-0.5 text-[11px] font-normal">{done ? "건" : ""}</span>
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+      <p className="mt-3 text-[11px]" style={{ color: "var(--ink-mute)" }}>
+        데모는 팀원이 KIPRIS에서 미리 모은 데이터에서 조사합니다. 실제 서비스는 이 단계에서 특허 DB를 검색합니다.
+      </p>
+    </div>
+  );
+}

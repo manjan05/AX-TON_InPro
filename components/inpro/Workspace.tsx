@@ -26,7 +26,7 @@ import { ResearcherRequest } from "./ResearcherRequest";
 import { DECISION_INFO, DocSection, EmptyAction, LevelMeter, MetricCard } from "./StepParts";
 import { StrengthCard } from "./StrengthCard";
 import { DataNotice } from "./DataNotice";
-import { Fold, SubRail, type Sub3 } from "./Parts3";
+import { Fold, SearchRun, SubRail, type Sub3 } from "./Parts3";
 import { BasisList, EvidenceLine } from "./Evidence";
 import { componentEvidence, distinctionSummary, recommendationBasis } from "@/lib/inpro/basis";
 import { ScopeItemCard } from "./ScopeItemCard";
@@ -86,6 +86,7 @@ export function Workspace() {
   const [watch, setWatch] = useState<WatchInfo | null>(null);
   const [rounds, setRounds] = useState<SurveyRound[]>([]);
   const [sub3, setSub3] = useState<Sub3>("설정");
+  const [play, setPlay] = useState<{ steps: SearchMeta["path"]; shown: number } | null>(null);
   // 경쟁사 조사·무효자료 조사 대상
   const [targets, setTargets] = useState<SearchTargets | null>(null);
   const [competitor, setCompetitor] = useState("");
@@ -279,9 +280,18 @@ export function Workspace() {
     const needLive = purpose === "둘 다" ? Math.max(0, 2 - pick.filter((d) => d.status === "등록").length) : 0;
     const addLive = result.docs.filter((d) => d.status === "등록" && !pick.includes(d)).slice(0, needLive);
     setSelected(new Set([...pick, ...addLive].map((d) => d.id)));
-    setSub3("후보");
     log("담당자", `조사 범위 확정: 키워드 ${keywords.length}개`);
     log("InPro AI", `선행조사 실행, 후보 ${result.docs.length}건`);
+    // 좁혀지는 과정을 한 단계씩 보여준 뒤 후보 화면으로
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    setPlay({ steps: result.path, shown: 0 });
+    for (let i = 1; i <= result.path.length; i++) {
+      await wait(520);
+      setPlay({ steps: result.path, shown: i });
+    }
+    await wait(700);
+    setPlay(null);
+    setSub3("후보");
   }
 
   async function doCompare() {
@@ -873,10 +883,11 @@ export function Workspace() {
                     <input value={newKeyword} onChange={(e) => setNewKeyword(e.target.value)} placeholder="키워드 추가" className={`w-44 ${inputCls}`} style={{ borderColor: "var(--hairline)", background: "#fff" }} />
                     <Button variant="ghost">추가</Button>
                     <span className="mx-1 h-5 w-px" style={{ background: "var(--rule)" }} />
-                    <Button arrow onClick={doSearch} loading={busy === "search"} disabled={searchKeywords.length === 0 || !targetReady}>
+                    <Button arrow onClick={doSearch} loading={busy === "search" || !!play} disabled={searchKeywords.length === 0 || !targetReady || !!play}>
                       {targetReady ? "선행조사 실행" : purpose === "경쟁사 조사" ? "경쟁사를 고르세요" : "대상 특허를 고르세요"}
                     </Button>
                   </form>
+                  {play && <SearchRun steps={play.steps} shown={play.shown} />}
                 </div>
               )}
 
