@@ -42,6 +42,15 @@ import { appendFollowUp, priorArtQuestions, summarizeRound, type SurveyRound } f
 // 팀장 인터뷰 질문 2의 실제 발명 검토 흐름을 따른다
 const STEPS = ["발명 접수", "기술 이해·보완", "선행기술 조사", "특허성·사업성", "권리범위 설계", "출원 결정·전달"];
 
+// 시연용 예시 답변: 질문에 나온 말로 어떤 항목인지 보고 알맞은 가짜 답을 채운다
+export function exampleAnswer(q: string): string {
+  if (/수치|압력|효과/.test(q)) return "같은 풍량에서 기존 단일 주름 필터 대비 압력 손실 약 12% 감소 (예시 답변)";
+  if (/비교|기존|기준/.test(q)) return "기존 단일 주름 필터(같은 프레임 크기)와 비교 (예시 답변)";
+  if (/도면|스케치|사진|형상 자료/.test(q)) return "손 스케치 2장과 시제품 사진 보유, 정식 도면은 다음 주 (예시 답변)";
+  if (/변형|다른 형태|대안/.test(q)) return "물결 모양 2차 주름, 돌기 대신 접착 비드 방식 검토 (예시 답변)";
+  return "확인 후 답변 예정 (예시 답변)";
+}
+
 const ROLES: ScopeRole[] = ["핵심", "대체 가능", "부가"];
 
 async function post<T>(url: string, body: unknown): Promise<T> {
@@ -680,108 +689,86 @@ export function Workspace() {
           {/* STEP 2 */}
           {step === 2 && intake && (
             <Card>
-              <StepTitle
-                n={2}
-                title="기술 이해·보완"
-                sub="발명자에게 물어볼 것만 질문으로 만들었습니다."
-              />
-              <div className="grid gap-8 lg:grid-cols-[1fr_300px]">
-                <div className="min-w-0">
-                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="font-[family-name:var(--font-display)] text-[12px] font-bold uppercase tracking-[.12em]" style={{ color: "var(--ink-soft)" }}>
-                        보완 질문
-                      </span>
-                      <span className="text-[12px] font-bold" style={{ color: "var(--crimson)" }}>
-                        답변 {answers.filter((x) => x.trim()).length} / {questions.length}
-                      </span>
-                    </div>
-                    <div className="h-1.5 w-40" style={{ background: "#e3e8f0" }}>
-                      <div
-                        className="h-full transition-all duration-300"
-                        style={{ width: `${questions.length ? (answers.filter((x) => x.trim()).length / questions.length) * 100 : 0}%`, background: "var(--crimson)" }}
+              <StepTitle n={2} title="기술 이해·보완" sub="빠진 항목만 발명자에게 확인" />
+
+              {questions.length > 0 ? (
+                <div className="space-y-6">
+                  {questions.map((q, i) => (
+                    <div key={q}>
+                      <label htmlFor={`answer-${i}`} className="mb-2 block text-[14px] font-bold leading-snug">
+                        Q{i + 1}. {q}
+                      </label>
+                      <textarea
+                        id={`answer-${i}`}
+                        rows={3}
+                        value={answers[i] ?? ""}
+                        onChange={(e) => setAnswers((a) => a.map((x, j) => (j === i ? e.target.value : x)))}
+                        placeholder="발명자 답변을 붙여넣으세요"
+                        className="min-h-[84px] w-full resize-y rounded-[10px] border bg-white px-3.5 py-3 text-[15px] leading-relaxed outline-none transition placeholder:text-[var(--ink-mute)] focus:border-[var(--crimson)] focus:shadow-[0_0_0_3px_rgba(29,79,216,.12)]"
+                        style={{ borderColor: "var(--rule)" }}
                       />
                     </div>
-                  </div>
-
-                  <ol className="space-y-3">
-                    {questions.map((q, i) => {
-                      const answered = !!answers[i]?.trim();
-                      return (
-                        <li
-                          key={q}
-                          className="border bg-white transition"
-                          style={{ borderColor: answered ? "var(--crimson)" : "var(--rule)", boxShadow: answered ? "inset 3px 0 0 var(--crimson)" : "none" }}
-                        >
-                          <div className="flex items-start gap-3 px-4 pt-4">
-                            <span
-                              className="grid h-7 w-7 shrink-0 place-items-center font-[family-name:var(--font-display)] text-[13px] font-bold"
-                              style={answered ? { background: "var(--crimson)", color: "#fff" } : { background: "var(--paper)", color: "var(--ink)" }}
-                            >
-                              {answered ? "✓" : `Q${i + 1}`}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <label htmlFor={`answer-${i}`} className="block text-[14px] font-bold leading-snug">
-                                {q}
-                              </label>
-                              <div className="mt-1 text-[11.5px]" style={{ color: answered ? "var(--crimson)" : "var(--ink-mute)" }}>
-                                {answered ? "답변 완료" : requestSentAt ? "연구원 답변 대기" : "아직 보내지 않음"}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="px-4 pb-4 pt-3 pl-14">
-                            <textarea
-                              id={`answer-${i}`}
-                              rows={2}
-                              value={answers[i] ?? ""}
-                              onChange={(e) => setAnswers((a) => a.map((x, j) => (j === i ? e.target.value : x)))}
-                              placeholder="연구원 답변을 붙여넣으세요"
-                              className="w-full border px-3 py-2 text-[13.5px] leading-relaxed outline-none transition focus:border-[var(--crimson)]"
-                              style={{ borderColor: "var(--rule)", background: "var(--paper)" }}
-                            />
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ol>
-
-                  <div className="mt-6 flex flex-wrap items-center gap-3 border-t pt-5" style={{ borderColor: "var(--hairline)" }}>
-                    <Button arrow onClick={doRefine} loading={busy === "refine"} disabled={!answersText}>
-                      {rows.length ? "답변 반영해 비교표 다시 만들기" : "답변 반영하고 조사로"}
-                    </Button>
-                    <Button variant="ghost" onClick={() => go(3)}>
-                      답변 없이 조사로
-                    </Button>
-                  </div>
+                  ))}
                 </div>
+              ) : (
+                <p className="text-[15px]" style={{ color: "var(--ink-soft)" }}>
+                  발명자에게 더 확인할 항목이 없습니다. 바로 조사로 넘어가세요.
+                </p>
+              )}
 
-                <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
-                  <ResearcherRequest
-                    title={intake.title}
-                    caseNo={caseNo}
-                    inventor={form.inventor}
-                    dept={form.dept}
-                    questions={questions}
-                    sentAt={requestSentAt}
-                    onSent={(channel) => {
-                      setRequestSentAt(new Date().toISOString());
-                      log("담당자", `연구원에게 보완 질문 ${questions.length}개 발송 (${channel})`);
-                    }}
-                  />
-                  {intake.missing.length > 0 && (
-                    <Fold summary={`질문의 근거 · 빠진 항목 ${intake.missing.length}개`}>
-                      <ul className="space-y-1.5 text-[12.5px]">
-                        {intake.missing.map((m) => (
-                          <li key={m.item}>
-                            <b style={{ color: "var(--crimson)" }}>{m.item}</b>
-                            <span style={{ color: "var(--ink-soft)" }}> · {m.why}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </Fold>
-                  )}
-                </aside>
+              {/* 버튼 줄: 보조는 왼쪽, 다음으로 가는 버튼은 오른쪽 끝 */}
+              <div className="mt-10 flex flex-wrap items-center gap-x-3 gap-y-3 border-t pt-6" style={{ borderColor: "var(--rule)" }}>
+                {questions.length > 0 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setAnswers(questions.map(exampleAnswer))}
+                      className="h-10 rounded-[10px] border px-4 text-[14px] font-bold transition hover:border-[var(--crimson)] hover:text-[var(--crimson)]"
+                      style={{ borderColor: "var(--rule)" }}
+                    >
+                      예시 답변 채우기
+                    </button>
+                    <button type="button" onClick={() => go(3)} className="text-[14px] underline underline-offset-4 transition hover:text-[var(--crimson)]" style={{ color: "var(--ink-soft)" }}>
+                      답변 없이 조사 진행
+                    </button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={questions.length > 0 ? doRefine : () => go(3)}
+                  disabled={(questions.length > 0 && !answersText) || busy === "refine"}
+                  className="ml-auto inline-flex h-[52px] items-center gap-2 rounded-[10px] px-[26px] text-[15px] font-bold text-white transition hover:brightness-110 disabled:opacity-35 disabled:hover:brightness-100"
+                  style={{ background: "var(--crimson)" }}
+                >
+                  {busy === "refine" && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />}
+                  {questions.length === 0 ? "조사로 넘어가기" : rows.length ? "답변 반영 후 비교표 다시 만들기" : "답변 반영 후 조사"}
+                </button>
               </div>
+
+              {/* 연구원에게 질문 보내기: 이 과정을 안 쓰는 사람도 있어서 접어 둔다 */}
+              {questions.length > 0 && (
+                <details className="group mt-6 border-t" style={{ borderColor: "var(--rule)" }}>
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-[18px] text-[14px] font-bold [&::-webkit-details-marker]:hidden" style={{ color: "var(--ink-soft)" }}>
+                    <span>연구원에게 질문 보내기</span>
+                    <span className="text-[13px] font-normal group-open:hidden">열기</span>
+                    <span className="hidden text-[13px] font-normal group-open:inline">접기</span>
+                  </summary>
+                  <div className="max-w-[520px] pb-2">
+                    <ResearcherRequest
+                      title={intake.title}
+                      caseNo={caseNo}
+                      inventor={form.inventor}
+                      dept={form.dept}
+                      questions={questions}
+                      sentAt={requestSentAt}
+                      onSent={(channel) => {
+                        setRequestSentAt(new Date().toISOString());
+                        log("담당자", `연구원에게 보완 질문 ${questions.length}개 발송 (${channel})`);
+                      }}
+                    />
+                  </div>
+                </details>
+              )}
             </Card>
           )}
 
