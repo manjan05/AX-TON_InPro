@@ -18,7 +18,7 @@ const TRUST: Record<Trust, { style: React.CSSProperties; hint: string }> = {
   "AI 추정": { style: { border: "1px dashed var(--ink-mute)", color: "var(--ink-soft)" }, hint: "AI의 추정입니다. 발명자·변리사 확인이 필요합니다" },
 };
 
-// 구성 하나: 먼저 결론(구분 · 우회 · 권리에 담는 방법), 경쟁사의 회피 시도는 눌러서 본다.
+// 구성 하나: 한 줄에 이름·한 줄 조언·우회 정도, 오른쪽에 구분 선택. 경쟁사의 회피 시도는 눌러서 본다.
 // 회피 시도마다 믿을 근거(발명자 확인 / 실제 특허 / AI 추정)를 표시하고, 발명자 확인을 받으면 구분이 다시 계산된다.
 export function ScopeItemCard({
   it,
@@ -30,26 +30,29 @@ export function ScopeItemCard({
   onConfirm: (method: string, v: "같음" | "다름" | null) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const core = it.role === "핵심";
   const attempts = it.attempts ?? [];
   return (
-    <li className="border bg-white" style={{ borderColor: core ? "var(--crimson)" : "var(--rule)", boxShadow: core ? "inset 3px 0 0 var(--crimson)" : "none" }}>
-      <div className="flex flex-wrap items-start justify-between gap-3 px-4 pt-4">
-        <div className="min-w-0">
-          <div className="text-[14.5px] font-bold">{it.componentName}</div>
-          <div className="mt-0.5 text-[11.5px]" style={{ color: "var(--ink-mute)" }}>
+    <li className="border-b py-6" style={{ borderColor: "var(--rule)" }}>
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+        <div className="min-w-0 flex-1 basis-[320px]">
+          <div className="text-[17px] font-extrabold">{it.componentName}</div>
+          {it.advice && <p className="mt-1.5 text-[14px] leading-[1.7]">{it.advice}</p>}
+          <p className="mt-0.5 text-[13px]" style={{ color: "var(--ink-mute)" }}>
             우회 {it.designAround}
-          </div>
+          </p>
+          <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="mt-2 text-[13px]" style={{ color: "var(--ink-soft)" }}>
+            {open ? "접기" : `회피 시도와 이유 보기${attempts.length ? ` (${attempts.length})` : ""}`}
+          </button>
         </div>
-        <div className="flex" role="group" aria-label={`${it.componentName} 구분`}>
+        <div className="flex rounded-full border bg-white p-1" style={{ borderColor: "var(--rule)" }} role="group" aria-label={`${it.componentName} 구분`}>
           {ROLES.map((r) => (
             <button
               key={r}
               type="button"
               onClick={() => onRole(r)}
               aria-pressed={it.role === r}
-              className="-ml-px border px-2.5 py-1.5 text-[12px] font-bold first:ml-0"
-              style={it.role === r ? { background: "var(--crimson)", color: "#fff", borderColor: "var(--crimson)", position: "relative" } : { borderColor: "var(--rule)", background: "#fff" }}
+              className="rounded-full px-5 py-2 text-[13.5px] font-bold transition"
+              style={it.role === r ? { background: "var(--crimson)", color: "#fff" } : { color: "var(--ink-soft)" }}
             >
               {r}
             </button>
@@ -57,35 +60,28 @@ export function ScopeItemCard({
         </div>
       </div>
 
-      <div className="px-4 pb-4 pt-2">
-        {it.advice && <p className="text-[13.5px] font-bold leading-snug">{it.advice}</p>}
-        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="mt-2 text-[11.5px] font-bold underline underline-offset-2" style={{ color: "var(--ink-soft)" }}>
-          {open ? "접기" : `경쟁사 회피 시도와 이유 보기${attempts.length ? ` (${attempts.length})` : ""}`}
-        </button>
-
-        {open && (
-          <div className="mt-3 space-y-3 border-t pt-3" style={{ borderColor: "#e9edf3" }}>
-            {attempts.length ? (
-              <ul className="space-y-3">
-                {attempts.map((a) => (
-                  <AttemptRow key={a.method} a={a} onConfirm={onConfirm} />
-                ))}
-              </ul>
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {splitAlternatives(it.alternatives).map((a) => (
-                  <span key={a} className="border border-dashed px-2 py-0.5 text-[12px] font-bold" style={{ borderColor: "var(--crimson)", color: "var(--crimson)" }}>
-                    {a}
-                  </span>
-                ))}
-              </div>
-            )}
-            <p className="text-[12.5px] leading-snug" style={{ color: "var(--ink-soft)" }}>
-              <b style={{ color: "var(--ink)" }}>{it.role}인 이유 ·</b> {it.reason}
-            </p>
-          </div>
-        )}
-      </div>
+      {open && (
+        <div className="mt-4 space-y-3">
+          {attempts.length ? (
+            <ul className="space-y-3">
+              {attempts.map((a) => (
+                <AttemptRow key={a.method} a={a} onConfirm={onConfirm} />
+              ))}
+            </ul>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {splitAlternatives(it.alternatives).map((a) => (
+                <span key={a} className="border border-dashed px-2 py-0.5 text-[12px] font-bold" style={{ borderColor: "var(--crimson)", color: "var(--crimson)" }}>
+                  {a}
+                </span>
+              ))}
+            </div>
+          )}
+          <p className="text-[13px] leading-snug" style={{ color: "var(--ink-soft)" }}>
+            <b style={{ color: "var(--ink)" }}>{it.role}인 이유 ·</b> {it.reason}
+          </p>
+        </div>
+      )}
     </li>
   );
 }

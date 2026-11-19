@@ -54,7 +54,6 @@ export function exampleAnswer(q: string): string {
   return "확인 후 답변 예정 (예시 답변)";
 }
 
-const ROLES: ScopeRole[] = ["핵심", "대체 가능", "부가"];
 
 async function post<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
@@ -139,6 +138,7 @@ export function Workspace() {
     setMaxStep((m) => Math.max(m, n));
     setError("");
     window.scrollTo({ top: 0, behavior: "smooth" });
+    if (n === 5 && intake && review && !scope) void doScope(); // 권리범위 설계안은 들어오면 바로 만든다
   };
 
   async function run<T>(label: string, fn: () => Promise<T>): Promise<T | null> {
@@ -1014,69 +1014,36 @@ export function Workspace() {
             <Card>
               <StepTitle n={5} title="권리범위 설계" sub="경쟁사라면 어떻게 피할지 먼저 봅니다. 청구항은 변리사가 씁니다." />
               {!scope ? (
-                <EmptyAction
-                  title={`구성 ${intake.components.length}개를 권리범위 관점에서 나눕니다.`}
-                  items={[
-                    "① 경쟁사라면 이 권리를 어떻게 피할지 구성마다 시도",
-                    "② 바꿔도 같은 효과가 나면 대체 가능, 아무 시도도 안 통하면 핵심",
-                    "③ 구성마다 권리에 담는 방법 (독립항 중심 · 상위 개념 · 종속항)",
-                    "변리사와 논의할 권리범위 방향",
-                  ]}
-                >
-                  <Button arrow onClick={doScope} loading={busy === "scope"}>
-                    권리범위 설계안 만들기
-                  </Button>
-                </EmptyAction>
+                <div className="py-10 text-[15px]" style={{ color: "var(--ink-soft)" }} role="status" aria-live="polite">
+                  {busy === "scope" ? (
+                    "경쟁사라면 구성마다 어떻게 피할지 시도하는 중입니다…"
+                  ) : (
+                    <>
+                      설계안을 만들지 못했습니다.{" "}
+                      <button type="button" onClick={doScope} className="font-bold underline underline-offset-2" style={{ color: "var(--crimson)" }}>
+                        다시 시도
+                      </button>
+                    </>
+                  )}
+                </div>
               ) : (
-                <div className="space-y-6">
-                  <div className="border-l-4 bg-white p-5" style={{ borderColor: "var(--crimson)" }}>
-                    <div className="mb-1 flex items-center gap-2 text-[11px] font-bold" style={{ color: "var(--ink-mute)" }}>
-                      권리범위 방향 <Tag>경쟁사 회피 시도를 바탕으로 한 AI 제안</Tag>
-                    </div>
-                    <p className="text-[15px] font-bold leading-relaxed">{scope.strategy}</p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 text-[12px] font-bold">
-                    {ROLES.map((r) => (
-                      <span key={r} className="border px-2.5 py-1" style={{ borderColor: "var(--rule)" }}>
-                        {r} {scope.items.filter((i) => i.role === r).length}
-                      </span>
-                    ))}
-                  </div>
-
+                <div>
                   {(() => {
-                    const all = scope.items.flatMap((i) => (i.attempts ?? []).map((a) => ({ i, a })));
-                    const ask = all.filter(({ a }) => needsConfirm(a));
-                    const counts = { 확인: all.filter(({ a }) => trustOf(a) === "발명자 확인").length, 실제: all.filter(({ a }) => trustOf(a) === "실제 특허").length, 추정: all.filter(({ a }) => trustOf(a) === "AI 추정").length };
+                    const cores = scope.items.filter((i) => i.role === "핵심").map((i) => i.componentName);
                     return (
-                      <div className="space-y-3">
-                        <div className="flex flex-wrap items-center gap-2 text-[12px]" style={{ color: "var(--ink-soft)" }}>
-                          <b style={{ color: "var(--ink)" }}>회피 시도 {all.length}개의 근거</b>
-                          <span className="px-1.5 py-0.5 text-[10.5px] font-bold" style={{ background: "var(--ink)", color: "#fff" }}>발명자 확인 {counts.확인}</span>
-                          <span className="px-1.5 py-0.5 text-[10.5px] font-bold" style={{ background: "#e5f4e4", color: "#2c5f2a" }}>실제 특허 {counts.실제}</span>
-                          <span className="px-1.5 py-0.5 text-[10.5px] font-bold" style={{ border: "1px dashed var(--ink-mute)" }}>AI 추정 {counts.추정}</span>
-                          <span>AI 추정은 근거가 없으니, 발명자에게 확인하세요.</span>
+                      <section className="grid gap-x-14 gap-y-4 border-b pb-10 md:grid-cols-[auto_1fr] md:items-end" style={{ borderColor: "var(--rule)" }}>
+                        <div>
+                          <div className="text-[13px]" style={{ color: "var(--ink-mute)" }}>
+                            권리범위 방향
+                          </div>
+                          <div className="mt-1.5 font-[family-name:var(--font-display)] text-[42px] font-extrabold leading-tight tracking-[-.04em]" style={{ color: "var(--crimson)" }}>
+                            {cores.length ? `${cores.join(" · ")} 중심` : "핵심 구성 없음"}
+                          </div>
                         </div>
-                        {ask.length > 0 && (
-                          <Fold summary={`발명자에게 확인할 것 ${ask.length}개 · AI가 추정한 대체 수단`}>
-                            <ResearcherRequest
-                              title={intake.title}
-                              caseNo={caseNo}
-                              inventor={form.inventor}
-                              dept={form.dept}
-                              questions={ask.map(({ i, a }) => `"${i.componentName}"을(를) '${a.method}'(으)로 바꿔도 같은 효과가 나나요? 다르다면 무엇이 다른가요?`)}
-                              sentAt={scopeSentAt}
-                              onSent={(channel) => {
-                                setScopeSentAt(new Date().toISOString());
-                                log("담당자", `대체 수단 확인 질문 ${ask.length}개 발송 (${channel})`);
-                              }}
-                            />
-                            <p className="mt-2 text-[11.5px]" style={{ color: "var(--ink-mute)" }}>
-                              답을 받으면 아래 카드의 회피 시도에서 ‘발명자 확인 · 효과 같음/다름’을 눌러 반영하세요. 구분이 다시 계산됩니다.
-                            </p>
-                          </Fold>
-                        )}
-                      </div>
+                        <p className="max-w-[640px] pb-1 text-[14px] leading-[1.8]" style={{ color: "var(--ink-soft)" }}>
+                          {scope.strategy}
+                        </p>
+                      </section>
                     );
                   })()}
 
@@ -1084,10 +1051,9 @@ export function Workspace() {
                     const conflict = strengthConflict(scope.items, review.strength?.designAround);
                     if (!conflict || !review.strength) return null;
                     return (
-                      <div className="border p-4 text-[13px]" style={{ borderColor: "var(--crimson)", background: "#f3f7fe" }}>
-                        <b style={{ color: "var(--crimson)" }}>4단계 판단과 다릅니다.</b> 권리의 강도에서는 우회 어려움을 ‘{review.strength.designAround.level}’으로 봤지만, 경쟁사 관점에서 시도해 보니 ‘
-                        {conflict.item.componentName}’은(는) {conflict.item.role}입니다. {conflict.item.reason}
-                        <div className="mt-2">
+                      <div className="mt-8 rounded-[12px] p-5 text-[14px] leading-[1.7]" style={{ background: "var(--crimson-soft)" }}>
+                        <b>4단계 판단과 다릅니다.</b> 권리의 강도에서는 우회 어려움을 ‘{review.strength.designAround.level}’으로 봤지만, 경쟁사 관점에서 시도해 보니 ‘{conflict.item.componentName}’은(는) {conflict.item.role}입니다. {conflict.item.reason}
+                        <div className="mt-3">
                           <Button
                             variant="ghost"
                             onClick={() => {
@@ -1112,19 +1078,60 @@ export function Workspace() {
                     );
                   })()}
 
-                  <ol className="space-y-3">
-                    {scope.items.map((it) => (
-                      <ScopeItemCard key={it.componentName} it={it} onRole={(r) => setRole(it.componentName, r)} onConfirm={(m, v) => confirmAttempt(it.componentName, m, v)} />
-                    ))}
-                  </ol>
+                  <section className="mt-10">
+                    <h3 className="flex flex-wrap items-baseline gap-3 text-[18px] font-extrabold">
+                      구성별 구분
+                      <span className="text-[13px] font-normal" style={{ color: "var(--ink-mute)" }}>
+                        권리에서 맡는 역할. 담당자가 바꿀 수 있습니다.
+                      </span>
+                    </h3>
+                    <p className="mt-2 text-[13px]" style={{ color: "var(--ink-mute)" }}>
+                      핵심: 바꾸면 효과가 사라짐 · 대체 가능: 바꿔도 효과가 같음 · 부가: 없어도 됨
+                    </p>
+                    <ol className="mt-4 border-t" style={{ borderColor: "var(--rule)" }}>
+                      {scope.items.map((it) => (
+                        <ScopeItemCard key={it.componentName} it={it} onRole={(r) => setRole(it.componentName, r)} onConfirm={(m, v) => confirmAttempt(it.componentName, m, v)} />
+                      ))}
+                    </ol>
+                  </section>
 
-                  <div className="flex flex-wrap items-center gap-3 border-t pt-5" style={{ borderColor: "var(--hairline)" }}>
-                    <Button arrow onClick={() => go(6)}>
-                      출원 결정·전달로
-                    </Button>
-                    <span className="text-[12px]" style={{ color: "var(--ink-soft)" }}>
-                      구분은 담당자가 바꿀 수 있고, 바꾼 내용은 변리사 전달자료에 그대로 들어갑니다.
-                    </span>
+                  {(() => {
+                    const ask = scope.items.flatMap((i) => (i.attempts ?? []).map((a) => ({ i, a }))).filter(({ a }) => needsConfirm(a));
+                    if (!ask.length) return null;
+                    return (
+                      <details className="group border-b" style={{ borderColor: "var(--rule)" }}>
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-[18px] text-[14px] font-bold [&::-webkit-details-marker]:hidden">
+                          <span>발명자에게 확인할 대체 수단 {ask.length}건</span>
+                          <span className="text-[13px] font-normal group-open:hidden" style={{ color: "var(--ink-soft)" }}>
+                            열기
+                          </span>
+                          <span className="hidden text-[13px] font-normal group-open:inline" style={{ color: "var(--ink-soft)" }}>
+                            접기
+                          </span>
+                        </summary>
+                        <div className="pb-5">
+                          <ResearcherRequest
+                            title={intake.title}
+                            caseNo={caseNo}
+                            inventor={form.inventor}
+                            dept={form.dept}
+                            questions={ask.map(({ i, a }) => `"${i.componentName}"을(를) '${a.method}'(으)로 바꿔도 같은 효과가 나나요? 다르다면 무엇이 다른가요?`)}
+                            sentAt={scopeSentAt}
+                            onSent={(channel) => {
+                              setScopeSentAt(new Date().toISOString());
+                              log("담당자", `대체 수단 확인 질문 ${ask.length}개 발송 (${channel})`);
+                            }}
+                          />
+                          <p className="mt-2 text-[13px]" style={{ color: "var(--ink-mute)" }}>
+                            답을 받으면 위 구성의 ‘회피 시도와 이유 보기’에서 효과 같음·다름을 눌러 반영하세요. 구분이 다시 계산됩니다.
+                          </p>
+                        </div>
+                      </details>
+                    );
+                  })()}
+
+                  <div className="mt-8 flex justify-end">
+                    <Button onClick={() => go(6)}>출원 결정</Button>
                   </div>
                 </div>
               )}
