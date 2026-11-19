@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Noto_Sans_KR, Roboto_Condensed, Roboto_Mono } from "next/font/google";
+import { Inter, Noto_Sans_KR, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 
-const condensed = Roboto_Condensed({
+const latin = Inter({
   subsets: ["latin"],
   weight: ["400", "500", "700", "800", "900"],
-  variable: "--font-condensed",
+  variable: "--font-latin",
 });
 const sans = Noto_Sans_KR({
   weight: ["400", "500", "700", "800", "900"],
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko" className={`${condensed.variable} ${sans.variable} ${mono.variable} h-full antialiased`}>
+    <html lang="ko" className={`${latin.variable} ${sans.variable} ${mono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

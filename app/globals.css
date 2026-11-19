@@ -23,8 +23,8 @@
   --orange: var(--crimson-2);
   --hairline: var(--rule);
 
-  --font-display: var(--font-condensed), var(--font-kr), sans-serif;
-  --font-body: var(--font-kr), var(--font-condensed), sans-serif;
+  --font-display: var(--font-latin), var(--font-kr), sans-serif;
+  --font-body: var(--font-latin), var(--font-kr), sans-serif;
   --font-mono: var(--font-mono-src), ui-monospace, monospace;
   --pad: 36px;
   --max: 1180px;
@@ -44,6 +44,9 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-body);
+  /* 한글은 단어 단위로 줄바꿈 (단어 중간에서 끊기지 않게) */
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /* ───────── Landing ───────── */
@@ -122,9 +125,9 @@ body {
   font-family: var(--font-display);
   font-weight: 800;
   text-transform: uppercase;
-  font-size: clamp(36px, 5vw, 54px);
-  line-height: 0.95;
-  letter-spacing: -0.01em;
+  font-size: clamp(34px, 4.4vw, 48px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
 }
 .lp-body {
   font-size: 13px;
@@ -143,195 +146,48 @@ body {
 
 .lp-hero-sub {
   font-family: var(--font-display);
-  font-weight: 500;
-  font-size: clamp(16px, 2vw, 21px);
-  line-height: 1.25;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  color: var(--ink-soft);
   max-width: 560px;
 }
 .lp-hero-title {
   font-family: var(--font-display);
   font-weight: 900;
   color: var(--crimson);
-  font-size: clamp(76px, 15vw, 172px);
-  line-height: 0.8;
-  letter-spacing: -0.035em;
+  font-size: clamp(64px, 11vw, 132px);
+  line-height: 0.9;
+  letter-spacing: -0.045em;
   text-transform: uppercase;
 }
+/* 작업 화면 맨 위 띠 */
 .lp-band {
-  background: radial-gradient(ellipse at 45% 60%, #ececee 0%, var(--studio-2) 38%, var(--studio) 100%);
-}
-/* 히어로 문서 더미: 마우스 기울기 + 부채꼴 펼침 */
-.lp-docs {
-  cursor: pointer;
-}
-.lp-docs-stage {
-  position: absolute;
-  inset: 0;
-  transform-style: preserve-3d;
-  transition: transform 0.25s ease-out;
-}
-.lp-sheet {
-  position: absolute;
-  height: 80%;
-  aspect-ratio: 3 / 4;
-  background: #fff;
-  padding: 18px;
-  overflow: hidden;
-  box-shadow: 0 24px 30px -22px rgba(0, 0, 0, 0.45);
-  transition:
-    left 0.7s cubic-bezier(0.2, 0.8, 0.2, 1),
-    bottom 0.7s cubic-bezier(0.2, 0.8, 0.2, 1),
-    transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1),
-    box-shadow 0.6s;
-}
-.lp-docs:hover .lp-sheet {
-  box-shadow: 0 34px 40px -24px rgba(0, 0, 0, 0.5);
-}
-.lp-evidence {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: var(--crimson);
-  transition: width 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s;
-}
-.lp-evidence-tag {
-  position: absolute;
-  left: calc(100% + 8px);
-  top: 50%;
-  transform: translateY(-50%);
-  white-space: nowrap;
-  background: var(--crimson);
-  color: #fff;
-  font-size: 9px;
-  font-weight: 700;
-  padding: 2px 6px;
-  transition: opacity 0.3s 0.6s;
-}
-@media (max-width: 760px) {
-  .lp-sheet {
-    height: 52%;
-    padding: 10px;
-  }
-}
-/* 회전 텍스트 원형 버튼 */
-.lp-orbit {
-  width: 176px;
-  height: 176px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-}
-.lp-orbit-ring {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  animation: lp-spin 16s linear infinite;
-}
-.lp-orbit-ring text {
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  fill: var(--crimson);
-}
-.lp-orbit-core {
-  width: 104px;
-  height: 104px;
-  border-radius: 50%;
-  border: 1.5px solid var(--crimson);
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 2px;
-  color: var(--crimson);
-  background: rgba(255,255,255, 0.75);
-  backdrop-filter: blur(2px);
-  transition:
-    background 0.3s,
-    color 0.3s,
-    transform 0.3s;
-}
-.lp-orbit-label {
-  font-size: 12px;
-  font-weight: 800;
-}
-.lp-orbit-arrow {
-  font-size: 22px;
-  line-height: 1;
-  transition: transform 0.3s;
-}
-.lp-orbit:hover .lp-orbit-core {
-  background: var(--crimson);
-  color: #fff;
-  transform: scale(1.06);
-}
-.lp-orbit:hover .lp-orbit-arrow {
-  transform: translateY(4px);
-}
-.lp-orbit:hover .lp-orbit-ring {
-  animation-duration: 6s;
-}
-@keyframes lp-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@media (max-width: 760px) {
-  .lp-orbit {
-    width: 124px;
-    height: 124px;
-  }
-  .lp-orbit-core {
-    width: 74px;
-    height: 74px;
-  }
-  .lp-orbit-label {
-    font-size: 10.5px;
-  }
+  background: radial-gradient(ellipse at 45% 60%, #f6f9ff 0%, var(--studio-2) 38%, var(--studio) 100%);
 }
 
-/* 메인 CTA: 데모 시작하기 */
+/* 메인 CTA: 시작하기 (첫 화면에 하나, 글자만 있는 둥근 버튼) */
 .lp-cta {
   display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 28px;
+  justify-content: center;
   background: var(--crimson);
   color: #fff;
-  padding: 16px 22px 16px 26px;
+  padding: 15px 40px;
+  border-radius: 999px;
   font-family: var(--font-display);
-  font-size: 17px;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  box-shadow: 0 18px 30px -18px rgba(29,79,216, 0.7);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0;
   transition:
     background 0.25s,
     transform 0.25s;
 }
-.lp-cta small {
-  display: block;
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  opacity: 0.75;
-  margin-bottom: 2px;
-}
-.lp-cta-arrow {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  font-size: 18px;
-  transition: transform 0.25s;
-}
 .lp-cta:hover {
   background: var(--crimson-2);
-  transform: translateY(-2px);
-}
-.lp-cta:hover .lp-cta-arrow {
-  transform: translateX(4px);
+  transform: translateY(-1px);
 }
 
 .lp-fade {
@@ -345,11 +201,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lp-fade,
-  .lp-orbit-ring,
-  .lp-docs-stage,
-  .lp-sheet,
-  .lp-evidence {
+  .lp-fade {
     animation: none !important;
     transition: none !important;
   }
