@@ -28,8 +28,7 @@ import { Field, Select, fieldCls } from "./FormParts";
 import { ResearcherRequest } from "./ResearcherRequest";
 import { DECISION_INFO, DocSection, EmptyAction } from "./StepParts";
 import { ReviewResult } from "./ReviewResult";
-import { Fold, SearchRun, SubRail, type Sub3 } from "./Parts3";
-import { BasisList } from "./Evidence";
+import { SearchRun, SubRail, type Sub3 } from "./Parts3";
 import { distinctionSummary, recommendationBasis } from "@/lib/inpro/basis";
 import { ScopeItemCard } from "./ScopeItemCard";
 import { effectOf, needsConfirm, reclassify, strengthConflict, trustOf } from "@/lib/inpro/designaround";
@@ -1146,141 +1145,116 @@ export function Workspace() {
               </div>
 
               {!approvedAt && (
-                <div className="no-print grid gap-8 lg:grid-cols-[1fr_300px]">
-                  <div className="min-w-0 space-y-8">
-                    <div>
-                      <div className="mb-3 font-[family-name:var(--font-display)] text-[12px] font-bold uppercase tracking-[.12em]" style={{ color: "var(--ink-soft)" }}>
-                        출원 방식 결정
-                      </div>
-                      <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="출원 방식">
-                        {DECISIONS.map((d) => {
-                          const on = decision === d;
-                          return (
-                            <button
-                              key={d}
-                              type="button"
-                              role="radio"
-                              aria-checked={on}
-                              onClick={() => setDecision(d)}
-                              className="flex flex-col gap-1.5 border bg-white p-4 text-left transition"
-                              style={on ? { borderColor: "var(--crimson)", boxShadow: "inset 0 0 0 1px var(--crimson), 0 14px 24px -18px rgba(29,79,216,.6)" } : { borderColor: "var(--rule)" }}
-                            >
-                              <span className="flex items-center justify-between gap-2">
-                                <span className="flex items-center gap-2 text-[15px] font-extrabold">
-                                  <span
-                                    className="grid h-4 w-4 place-items-center rounded-full border"
-                                    style={{ borderColor: on ? "var(--crimson)" : "var(--rule)" }}
-                                  >
-                                    {on && <span className="h-2 w-2 rounded-full" style={{ background: "var(--crimson)" }} />}
-                                  </span>
-                                  {d}
-                                </span>
-                                {review.recommendation === d && (
-                                  <span className="px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ background: "var(--crimson)" }}>
-                                    AI 추천
-                                  </span>
-                                )}
-                              </span>
-                              <span className="text-[12.5px] leading-snug" style={{ color: "var(--ink-soft)" }}>
-                                {DECISION_INFO[d]}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <div className="mt-4">
-                        <Fold summary={`AI 추천 ‘${review.recommendation}’에 쓴 사실`}>
-                          <BasisList title="" facts={recommendationBasis(intake, review, matrix, scope)} />
-                        </Fold>
-                      </div>
-                      <label htmlFor="decision-memo" className="mb-1.5 mt-4 block text-[13px] font-bold">
-                        결정 메모{overrideNeedsMemo && <span style={{ color: "var(--crimson)" }}> * AI 추천과 다르게 정한 이유를 적어 주세요</span>}
-                      </label>
+                <div className="no-print">
+                  <div className="grid gap-x-6 gap-y-6 md:grid-cols-2">
+                    <Field label="출원 방식" htmlFor="decision">
+                      <Select id="decision" value={decision} onChange={(v) => setDecision(v as typeof decision)}>
+                        {DECISIONS.map((d) => (
+                          <option key={d} value={d}>
+                            {d}
+                            {review.recommendation === d ? " (추천)" : ""}
+                          </option>
+                        ))}
+                      </Select>
+                      <p className="mt-2 text-[13px] leading-[1.6]" style={{ color: "var(--ink-mute)" }}>
+                        {DECISION_INFO[decision]}
+                      </p>
+                    </Field>
+                    <Field label="승인자" required htmlFor="approver">
+                      <input id="approver" value={approver} onChange={(e) => setApprover(e.target.value)} placeholder="예: 연구소장" className={fieldCls} style={{ borderColor: "var(--rule)" }} />
+                    </Field>
+                    <Field label="결정 메모" htmlFor="decision-memo" className="md:col-span-2">
                       <textarea
                         id="decision-memo"
-                        rows={2}
+                        rows={3}
                         value={decisionMemo}
                         onChange={(e) => setDecisionMemo(e.target.value)}
                         placeholder="예: 해외는 미국만, 제어 로직은 영업비밀로"
-                        className="w-full border bg-white px-3 py-2.5 text-[13.5px] outline-none focus:border-[var(--crimson)]"
+                        className="w-full rounded-[10px] border bg-white px-3.5 py-3 text-[15px] outline-none transition placeholder:text-[var(--ink-mute)] focus:border-[var(--crimson)]"
                         style={{ borderColor: "var(--rule)" }}
                       />
-                      {disc && disc.level !== "여유" && (
-                        <p className="mt-2 text-[12.5px] font-bold" style={{ color: "var(--crimson)" }}>
-                          {disc.message}
+                      {overrideNeedsMemo && (
+                        <p className="mt-2 text-[13px] font-bold" style={{ color: "var(--crimson)" }}>
+                          AI 추천과 다르게 정한 이유를 적어 주세요.
                         </p>
                       )}
-                    </div>
-
-                    <Fold
-                      defaultOpen={unconfirmed > 0}
-                      summary={
-                        <>
-                          비교표 담당자 확인{" "}
-                          <span style={{ color: unconfirmed ? "var(--crimson)" : "var(--ink)" }}>
-                            {rows.length - unconfirmed} / {rows.length}
-                          </span>
-                          {unconfirmed > 0 && <span className="ml-1.5 text-[11px] font-normal" style={{ color: "var(--crimson)" }}>승인 전에 모두 확인해야 합니다</span>}
-                        </>
-                      }
-                    >
-                      <CompareTable rows={rows} confirmed={confirmed} changed={changed} onToggle={toggleConfirm} />
-                    </Fold>
+                    </Field>
                   </div>
 
-                  <aside className="lg:sticky lg:top-20 lg:self-start">
-                    <div className="border bg-white" style={{ borderColor: "var(--rule)" }}>
-                      <div className="border-b px-4 py-3 text-[13px] font-extrabold" style={{ borderColor: "var(--rule)" }}>
-                        승인 전 확인
-                      </div>
-                      <ul className="space-y-2.5 px-4 py-4 text-[12.5px]">
-                        {(
-                          [
-                            [`비교표 확인 ${rows.length - unconfirmed}/${rows.length}`, unconfirmed === 0 && rows.length > 0],
-                            ["특허성·사업성 검토서", !!review],
-                            ["권리범위 설계", !!scope],
-                            [`출원 방식: ${decision}${review && decision !== review.recommendation ? " (AI 추천과 다름)" : ""}`, !overrideNeedsMemo],
-                          ] as [string, boolean][]
-                        ).map(([label, ok]) => (
-                          <li key={label} className="flex items-center gap-2">
-                            <span
-                              className="grid h-4 w-4 shrink-0 place-items-center text-[10px] font-bold"
-                              style={ok ? { background: "var(--crimson)", color: "#fff" } : { border: "1px solid var(--rule)", color: "transparent" }}
-                            >
-                              ✓
-                            </span>
-                            <span style={{ color: ok ? "var(--ink)" : "var(--ink-soft)" }}>{label}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      <div className="border-t px-4 py-4" style={{ borderColor: "var(--rule)" }}>
-                        <label htmlFor="approver" className="mb-1.5 block text-[12px] font-bold">
-                          승인자
-                        </label>
-                        <input
-                          id="approver"
-                          value={approver}
-                          onChange={(e) => setApprover(e.target.value)}
-                          placeholder="예: 연구소장"
-                          className="mb-3 w-full border px-3 py-2 text-[13.5px] outline-none focus:border-[var(--crimson)]"
-                          style={{ borderColor: "var(--rule)" }}
-                        />
-                        <Button arrow onClick={approve} disabled={!approver.trim() || unconfirmed > 0 || overrideNeedsMemo}>
-                          승인하고 전달자료 만들기
-                        </Button>
-                        {unconfirmed > 0 && (
-                          <p className="mt-2 text-[11.5px] font-bold" style={{ color: "var(--crimson)" }}>
-                            비교표 {unconfirmed}줄을 먼저 확인해 주세요.
-                          </p>
+                  {disc && disc.level !== "여유" && (
+                    <p className="mt-4 text-[13.5px] font-bold" style={{ color: "var(--crimson)" }}>
+                      {disc.message}
+                    </p>
+                  )}
+
+                  <section className="mt-10">
+                    <h3 className="text-[18px] font-extrabold">승인 전 확인</h3>
+                    <ul className="mt-3 border-t" style={{ borderColor: "var(--rule)" }}>
+                      <li className="flex items-center justify-between gap-4 border-b py-4 text-[14.5px]" style={{ borderColor: "var(--rule)" }}>
+                        <span>
+                          비교표 담당자 확인 {rows.length - unconfirmed} / {rows.length}
+                        </span>
+                        {unconfirmed > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSub3("결과");
+                              go(3);
+                            }}
+                            className="text-[13.5px] font-bold underline underline-offset-2"
+                            style={{ color: "var(--crimson)" }}
+                          >
+                            확인하러 가기
+                          </button>
+                        ) : (
+                          <span className="text-[13.5px]" style={{ color: "var(--ink-soft)" }}>
+                            완료
+                          </span>
                         )}
-                        {overrideNeedsMemo && (
-                          <p className="mt-2 text-[11.5px] font-bold" style={{ color: "var(--crimson)" }}>
-                            AI 추천과 다르게 정한 이유를 결정 메모에 적어 주세요.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </aside>
+                      </li>
+                      <li className="flex items-center justify-between gap-4 border-b py-4 text-[14.5px]" style={{ borderColor: "var(--rule)" }}>
+                        <span>특허성·사업성 검토서</span>
+                        <span className="text-[13.5px]" style={{ color: "var(--ink-soft)" }}>
+                          완료
+                        </span>
+                      </li>
+                      <li className="flex items-center justify-between gap-4 border-b py-4 text-[14.5px]" style={{ borderColor: "var(--rule)" }}>
+                        <span>권리범위 설계</span>
+                        <span className="text-[13.5px]" style={{ color: "var(--ink-soft)" }}>
+                          {scope ? "완료" : "미완료"}
+                        </span>
+                      </li>
+                    </ul>
+                  </section>
+
+                  <details className="group border-b" style={{ borderColor: "var(--rule)" }}>
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-[18px] text-[14px] font-bold [&::-webkit-details-marker]:hidden">
+                      <span>AI 추천 ‘{review.recommendation}’에 쓴 사실</span>
+                      <span className="text-[13px] font-normal group-open:hidden" style={{ color: "var(--ink-soft)" }}>
+                        열기
+                      </span>
+                      <span className="hidden text-[13px] font-normal group-open:inline" style={{ color: "var(--ink-soft)" }}>
+                        접기
+                      </span>
+                    </summary>
+                    <ul className="list-disc space-y-1 pb-5 pl-5 text-[13.5px] leading-[1.75]" style={{ color: "var(--ink-soft)" }}>
+                      {recommendationBasis(intake, review, matrix, scope).map((f) => (
+                        <li key={f}>{f}</li>
+                      ))}
+                    </ul>
+                  </details>
+
+                  <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
+                    <p className="text-[13.5px]" style={{ color: "var(--ink-soft)" }}>
+                      {(() => {
+                        const left = [unconfirmed > 0 ? `비교표 확인 ${unconfirmed}줄` : "", !approver.trim() ? "승인자 입력" : "", overrideNeedsMemo ? "결정 메모" : ""].filter(Boolean);
+                        return left.length ? `남은 일: ${left.join(", ")}` : "모두 확인했습니다. 승인하면 전달자료가 만들어집니다.";
+                      })()}
+                    </p>
+                    <Button onClick={approve} disabled={!approver.trim() || unconfirmed > 0 || overrideNeedsMemo}>
+                      승인 후 전달자료 생성
+                    </Button>
+                  </div>
                 </div>
               )}
 
