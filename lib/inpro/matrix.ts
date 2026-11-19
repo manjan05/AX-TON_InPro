@@ -41,6 +41,7 @@ export interface MatrixDoc {
   label: string; // 문헌 A, B, C…
   title: string;
   live?: boolean; // 등록(살아 있는) 특허
+  status?: string; // 법적 상태 (등록·소멸·거절 …)
 }
 
 export interface Matrix {
@@ -103,7 +104,7 @@ export function verdictLabels(mode: Purpose): { cards: [string, string][]; uniqu
 }
 
 export function labelDocs(docs: { id: string; title: string; status?: string }[]): MatrixDoc[] {
-  return docs.map((d, i) => ({ id: d.id, title: d.title, label: `문헌 ${String.fromCharCode(65 + i)}`, live: d.status === "등록" }));
+  return docs.map((d, i) => ({ id: d.id, title: d.title, label: `문헌 ${String.fromCharCode(65 + i)}`, live: d.status === "등록", status: d.status }));
 }
 
 export function computeVerdict(

@@ -8,6 +8,7 @@ import type { Level } from "./types";
 
 export interface StrengthAxis {
   level: Level; // 높음 = 권리에 유리
+  score?: number; // 1~7점 (7이 가장 유리). level은 이 점수에서 서버가 정한다
   reason: string;
   basis: string; // 근거가 된 구성 이름
 }

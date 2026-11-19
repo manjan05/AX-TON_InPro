@@ -1,5 +1,6 @@
 "use client";
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState } from "react";
+import { Field, Select, fieldCls } from "./FormParts";
 import { DEV_STAGES, type DevStage } from "@/lib/inpro/types";
 import { DISCLOSURE_TYPES, disclosureStatus } from "@/lib/inpro/disclosure";
 
@@ -45,36 +46,6 @@ export const EXAMPLE_FORM: IntakeFormState = {
 export const isSubmittable = (f: IntakeFormState) => f.title.trim().length > 0 && f.material.trim().length >= 20;
 
 // 멘토 시안 "01 발명 접수"와 같은 형태: 입력칸을 위에서 아래로 한 줄씩, 맨 아래에 버튼 줄
-const fieldCls =
-  "w-full h-[52px] rounded-[10px] border bg-white px-3.5 text-[15px] outline-none transition placeholder:text-[var(--ink-mute)] focus:border-[var(--crimson)] focus:shadow-[0_0_0_3px_rgba(29,79,216,.12)]";
-const selectCls = `${fieldCls} appearance-none pr-10`;
-
-function Field({ label, required, htmlFor, children, className = "" }: { label: string; required?: boolean; htmlFor: string; children: ReactNode; className?: string }) {
-  return (
-    <div className={className}>
-      <label htmlFor={htmlFor} className="mb-2 block text-[14px] font-bold">
-        {label}
-        {required && <span style={{ color: "var(--crimson)" }}> *</span>}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-// 오른쪽 끝에 화살표(▾)가 있는 선택칸
-function Select({ id, value, onChange, children }: { id: string; value: string; onChange: (v: string) => void; children: ReactNode }) {
-  return (
-    <div className="relative">
-      <select id={id} value={value} onChange={(e) => onChange(e.target.value)} className={selectCls} style={{ borderColor: "var(--rule)" }}>
-        {children}
-      </select>
-      <svg className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-        <path d="M3.5 6l4.5 4.5L12.5 6" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </div>
-  );
-}
-
 export function IntakeForm({
   form,
   onChange,

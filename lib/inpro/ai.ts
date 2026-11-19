@@ -6,6 +6,7 @@ import type { RawCell } from "./matrix";
 import { GLOSSARY } from "./search";
 import { CHECKLIST, missingFrom, verifyChecklist, type ChecklistId } from "./checklist";
 import { classify } from "./designaround";
+import { levelOf } from "./scores";
 import { attemptEvidence } from "./search";
 
 const intakeSchema = z.object({
@@ -114,7 +115,7 @@ ${docList}`,
 const level = z.enum(["높음", "보통", "낮음"]);
 const axis = (what: string) =>
   z.object({
-    level: level.describe(what),
+    score: z.number().int().min(1).max(7).describe(`${what} 1~7점, 7이 가장 유리, 4가 보통. 근거에 맞게 세분해서 매긴다`),
     reason: z.string().describe("판단 이유 한 문장. 비교표의 어느 문헌·차이 때문인지 구체적으로"),
     basis: z.string().describe("근거가 된 발명 구성 이름 하나 (구성 목록의 이름 그대로)"),
   });
@@ -124,15 +125,15 @@ const reviewSchema = z.object({
     .array(z.object({ point: z.string().describe("다른 점 후보 한 문장"), componentName: z.string().describe("이 차이가 걸린 발명 구성 이름 (구성 목록의 이름 그대로)") }))
     .describe("선행 문헌과 다른 점 후보"),
   patentability: z.string().describe("특허성 의견 1~2문장. 등록 가능성을 단정하지 않는다"),
-  businessImportance: level.describe("이 발명이 회사 제품·사업에 얼마나 중요한지"),
+  businessScore: z.number().int().min(1).max(7).describe("이 발명이 회사 제품·사업에 얼마나 중요한지 1~7점, 7이 가장 중요, 4가 보통"),
   businessReason: z.string(),
   imitationRisk: level.describe("경쟁사가 이 기술을 모방·활용할 가능성"),
   imitationReason: z.string(),
   strength: z
     .object({
-      designAround: axis("경쟁사가 이 권리를 피해 같은 효과를 내기 어려운 정도. 높음 = 피하기 어려움"),
-      detectability: axis("시중 경쟁 제품을 보고 침해를 알아챌 수 있는 정도. 외관·구조로 보이면 높음, 내부 제어·제조 공정이면 낮음"),
-      provability: axis("제품 분해·측정으로 침해 증거를 확보할 수 있는 정도. 높음 = 입증 쉬움"),
+      designAround: axis("경쟁사가 이 권리를 피해 같은 효과를 내기 어려운 정도. 7 = 피하기 가장 어려움."),
+      detectability: axis("시중 경쟁 제품을 보고 침해를 알아챌 수 있는 정도. 외관·구조로 보이면 높은 점수, 내부 제어·제조 공정이면 낮은 점수."),
+      provability: axis("제품 분해·측정으로 침해 증거를 확보할 수 있는 정도. 7 = 입증이 가장 쉬움."),
     })
     .describe("권리의 강도"),
   recommendation: z.enum(["국내 출원", "해외 출원", "영업비밀", "보류"]),
@@ -158,6 +159,7 @@ export async function runReview(
 - 권리의 강도: 특허를 받을 수 있는지와 별개로, 받은 권리가 경쟁사를 실제로 막을 수 있는지 본다.
   우회 어려움은 선행 문헌과 다른 구성(차별 구성)만으로 권리를 잡았을 때 그 구성을 다른 수단으로 바꾸기 쉬운지 본다.
   침해 발견·입증은 그 차별 구성이 제품 밖에서 보이거나 분해·측정으로 확인되는지 본다. 근거 구성은 아래 구성 목록에서 고른다.
+- 점수는 1~7점이다. 4가 보통이고 7이 가장 유리하다. 높음·낮음 한쪽으로 쏠리지 않게, 비교표 근거에 맞춰 세분해서 매긴다.
 - 추천: 국내 출원 / 해외 출원 / 영업비밀(외부에서 역설계로 알기 어려운 공정·제어 노하우일 때) / 보류(자료 부족·사업성 낮음).
 - 남은 쟁점은 연구원이 아직 답하지 않은 질문과 근거 부족 항목에서 뽑는다.
 
@@ -171,8 +173,12 @@ ${context}
 [비교표]
 ${table(rows)}`,
   });
+  const { strength, ...rest } = output;
+  const withLevel = (a: (typeof strength)["designAround"]) => ({ ...a, level: levelOf(a.score) });
   return {
-    ...output,
+    ...rest,
+    businessImportance: levelOf(output.businessScore),
+    strength: { designAround: withLevel(strength.designAround), detectability: withLevel(strength.detectability), provability: withLevel(strength.provability) },
     differences: output.differences.map((d) => d.point),
     differenceBasis: output.differences.map((d) => d.componentName),
   };
