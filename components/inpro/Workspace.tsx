@@ -25,7 +25,6 @@ import { DocCard, NearMissPanel, SearchPath, type SearchMeta } from "./SearchRes
 import { ResearcherRequest } from "./ResearcherRequest";
 import { DECISION_INFO, DocSection, EmptyAction, LevelMeter, MetricCard } from "./StepParts";
 import { StrengthCard } from "./StrengthCard";
-import { DataNotice } from "./DataNotice";
 import { Fold, SearchRun, SubRail, type Sub3 } from "./Parts3";
 import { BasisList, EvidenceLine } from "./Evidence";
 import { componentEvidence, distinctionSummary, recommendationBasis } from "@/lib/inpro/basis";
@@ -33,7 +32,7 @@ import { ScopeItemCard } from "./ScopeItemCard";
 import { effectOf, needsConfirm, reclassify, strengthConflict, trustOf } from "@/lib/inpro/designaround";
 import { STRENGTH_AXES, overallStrength } from "@/lib/inpro/strength";
 import { EMPTY_FORM, EXAMPLE_FORM, IntakeForm, composeDescription, type IntakeFormState } from "./IntakeForm";
-import { ChecklistView } from "./ChecklistView";
+import { IntakeSummary } from "./IntakeSummary";
 import { WatchPanel, type WatchInfo } from "./WatchPanel";
 import { DistinctionLoop } from "./DistinctionLoop";
 import { TargetPicker, type InvalidityTarget, type SearchTargets } from "./TargetPicker";
@@ -86,6 +85,7 @@ export function Workspace() {
   const [watch, setWatch] = useState<WatchInfo | null>(null);
   const [rounds, setRounds] = useState<SurveyRound[]>([]);
   const [sub3, setSub3] = useState<Sub3>("설정");
+  const [intakeView, setIntakeView] = useState<"form" | "result">("form");
   const [play, setPlay] = useState<{ steps: SearchMeta["path"]; shown: number } | null>(null);
   // 경쟁사 조사·무효자료 조사 대상
   const [targets, setTargets] = useState<SearchTargets | null>(null);
@@ -175,6 +175,8 @@ export function Workspace() {
       setCaseNo(`INV-${ymd}-${String(Math.floor(Math.random() * 900) + 100)}`);
     }
     setIntake(result);
+    setIntakeView("result");
+    window.scrollTo({ top: 0, behavior: "smooth" });
     setKeywords(result.keywords);
     setQuestions(result.questions);
     setAnswers(result.questions.map(() => ""));
@@ -567,7 +569,7 @@ export function Workspace() {
         <div className="mx-auto max-w-7xl px-4 pb-6 pt-8 sm:px-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="min-w-0">
-              <div className="font-mono text-[11px] font-bold tracking-widest" style={{ color: "var(--ink-soft)" }}>
+              <div className="mb-4 font-mono text-[11px] font-bold tracking-widest" style={{ color: "var(--ink-soft)" }}>
                 {caseNo ?? "CASE"} · {intake ? intake.field : "새 발명 사건"}
               </div>
               <h1
@@ -576,19 +578,6 @@ export function Workspace() {
               >
                 {intake ? intake.title : "New Case"}
               </h1>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <span className="border bg-white/70 px-3 py-1.5 text-[12px] font-bold" style={{ borderColor: "var(--rule)" }}>
-                개발 단계 · {stage}
-              </span>
-              {disc && (
-                <span
-                  className="px-3 py-1.5 text-[12px] font-bold"
-                  style={disc.level === "여유" ? { background: "#fff", color: "var(--ink)" } : { background: "var(--crimson)", color: "#fff" }}
-                >
-                  {disclosure?.type} {disc.days >= 0 ? `D-${disc.days}` : `D+${-disc.days}`}
-                </span>
-              )}
             </div>
           </div>
 
@@ -651,69 +640,39 @@ export function Workspace() {
           {/* STEP 1 */}
           {step === 1 && (
             <Card>
-              <StepTitle n={1} title="발명 접수" sub="연구원 자료를 그대로 넣으면 구성과 빠진 항목을 짚어 드립니다." />
-              <div className="mb-6">
-                <DataNotice />
-              </div>
-              <IntakeForm
-                form={form}
-                onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
-                stage={stage}
-                onStage={setStage}
-                discDate={discDate}
-                discType={discType}
-                onDiscDate={setDiscDate}
-                onDiscType={setDiscType}
-                caseNo={caseNo}
-                busy={busy === "intake"}
-                onSubmit={doIntake}
-                submitted={!!intake}
-                onFillExample={() => {
-                  setForm(EXAMPLE_FORM);
-                  setStage("상세설계");
-                  const d = new Date();
-                  d.setDate(d.getDate() + 21);
-                  setDiscType("학회·전시");
-                  setDiscDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
-                }}
-              />
-
-              {intake && (
-                <div className="mt-10 border-t pt-8" style={{ borderColor: "var(--hairline)" }}>
-                  <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="font-[family-name:var(--font-display)] text-[26px] font-extrabold leading-tight">
-                        구성 {intake.components.length}개 · 빠진 항목 <span style={{ color: "var(--crimson)" }}>{intake.missing.length}개</span>
-                      </div>
-                      <div className="line-clamp-1 text-[12px]" style={{ color: "var(--ink-mute)" }}>
-                        {intake.field} · {intake.problem}
-                      </div>
-                    </div>
-                    <Button arrow onClick={() => go(2)}>
-                      다음: 발명자 인터뷰
-                    </Button>
-                  </div>
-                <div className="grid gap-5 md:grid-cols-2">
-                  <div>
-                    <h3 className="mb-2 text-sm font-extrabold">기술 구성 초안 <Tag>AI 제안</Tag></h3>
-                    <ul className="space-y-2">
-                      {intake.components.map((c) => (
-                        <li key={c.id} className="border p-3 text-[13px]" style={{ borderColor: "var(--hairline)", background: "#fff" }}>
-                          <span className="mr-1 font-mono text-[11px] font-bold" style={{ color: "var(--crimson)" }}>{c.id}</span>
-                          <b>{c.name}</b>
-                          <div className="mt-0.5" style={{ color: "var(--ink-soft)" }}>{c.description}</div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <h3 className="mb-2 text-sm font-extrabold">
-                      출원 체크리스트 <Tag tone="orange">충족 {(intake.checklist ?? []).filter((c) => c.status === "충족").length}/{intake.checklist?.length ?? 8}</Tag>
-                    </h3>
-                    <ChecklistView items={intake.checklist ?? []} />
-                  </div>
-                </div>
-                </div>
+              <StepTitle n={1} title="발명 접수" sub="연구원 메모를 그대로 붙여넣는 단계" />
+              {intake && intakeView === "result" ? (
+                <IntakeSummary
+                  intake={intake}
+                  questionCount={questions.length}
+                  onEdit={() => {
+                    setIntakeView("form");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  onNext={() => go(2)}
+                />
+              ) : (
+                <IntakeForm
+                  form={form}
+                  onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+                  stage={stage}
+                  onStage={setStage}
+                  discDate={discDate}
+                  discType={discType}
+                  onDiscDate={setDiscDate}
+                  onDiscType={setDiscType}
+                  busy={busy === "intake"}
+                  onSubmit={doIntake}
+                  submitted={!!intake}
+                  onFillExample={() => {
+                    setForm(EXAMPLE_FORM);
+                    setStage("상세설계");
+                    const d = new Date();
+                    d.setDate(d.getDate() + 21);
+                    setDiscType("학회·전시");
+                    setDiscDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+                  }}
+                />
               )}
             </Card>
           )}

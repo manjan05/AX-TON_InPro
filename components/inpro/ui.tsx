@@ -23,22 +23,19 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
 
 export function StepTitle({ n, title, sub }: { n: number; title: string; sub: string }) {
   return (
-    <div className="mb-7 flex items-start gap-5 border-b pb-6" style={{ borderColor: "var(--hairline)" }}>
+    <div className="mb-8 flex items-center gap-5 border-b pb-7" style={{ borderColor: "var(--hairline)" }}>
       <div
-        className="shrink-0 font-[family-name:var(--font-display)] text-[72px] font-black leading-[.78] tracking-[-.04em] max-sm:text-[52px]"
+        className="shrink-0 font-[family-name:var(--font-display)] text-[68px] font-extrabold leading-none tracking-[-.04em] max-sm:text-[48px]"
         style={{ color: "var(--crimson)" }}
         aria-hidden="true"
       >
         {String(n).padStart(2, "0")}
       </div>
-      <div className="min-w-0 pt-1">
-        <div className="mb-1 font-mono text-[11px] font-bold tracking-widest" style={{ color: "var(--ink-mute)" }}>
-          STEP {String(n).padStart(2, "0")} / 06
-        </div>
-        <h2 className="font-[family-name:var(--font-display)] text-[30px] font-extrabold leading-tight max-sm:text-2xl" style={{ color: "var(--ink)" }}>
+      <div className="min-w-0">
+        <h2 className="font-[family-name:var(--font-display)] text-[30px] font-extrabold leading-tight tracking-[-.02em] max-sm:text-2xl" style={{ color: "var(--ink)" }}>
           {title}
         </h2>
-        <p className="mt-1.5 max-w-2xl text-[14px] leading-relaxed" style={{ color: "var(--ink-soft)" }}>
+        <p className="mt-1 max-w-2xl text-[14px] leading-relaxed" style={{ color: "var(--ink-soft)" }}>
           {sub}
         </p>
       </div>
@@ -71,11 +68,6 @@ export function Button({
     >
       {loading && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />}
       {children}
-      {arrow && !loading && (
-        <span className="ws-btn-arrowbox" aria-hidden="true">
-          →
-        </span>
-      )}
     </button>
   );
 }

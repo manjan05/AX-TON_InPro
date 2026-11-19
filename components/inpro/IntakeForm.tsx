@@ -2,7 +2,6 @@
 import { useRef, useState, type ReactNode } from "react";
 import { DEV_STAGES, type DevStage } from "@/lib/inpro/types";
 import { DISCLOSURE_TYPES, disclosureStatus } from "@/lib/inpro/disclosure";
-import { Button } from "./ui";
 
 // 발명 접수 화면. 연구원이 이미 가진 자료(메모·보고서·PDF)를 그대로 받는다.
 // 칸을 나눠 다시 쓰게 하지 않고, 무엇이 빠졌는지는 AI 검토의 출원 체크리스트가 짚는다.
@@ -45,37 +44,33 @@ export const EXAMPLE_FORM: IntakeFormState = {
 
 export const isSubmittable = (f: IntakeFormState) => f.title.trim().length > 0 && f.material.trim().length >= 20;
 
+// 멘토 시안 "01 발명 접수"와 같은 형태: 입력칸을 위에서 아래로 한 줄씩, 맨 아래에 버튼 줄
 const fieldCls =
-  "w-full border bg-white px-3 py-2.5 text-[14px] leading-relaxed outline-none transition focus:border-[var(--crimson)] focus:shadow-[0_0_0_3px_rgba(29,79,216,.08)]";
+  "w-full h-[52px] rounded-[10px] border bg-white px-3.5 text-[15px] outline-none transition placeholder:text-[var(--ink-mute)] focus:border-[var(--crimson)] focus:shadow-[0_0_0_3px_rgba(29,79,216,.12)]";
+const selectCls = `${fieldCls} appearance-none pr-10`;
 
-function Label({ n, children, required, hint, htmlFor }: { n?: string; children: ReactNode; required?: boolean; hint?: string; htmlFor: string }) {
+function Field({ label, required, htmlFor, children, className = "" }: { label: string; required?: boolean; htmlFor: string; children: ReactNode; className?: string }) {
   return (
-    <label htmlFor={htmlFor} className="mb-1.5 flex flex-wrap items-baseline gap-x-2">
-      {n && (
-        <span className="font-mono text-[11px] font-bold" style={{ color: "var(--crimson)" }}>
-          {n}
-        </span>
-      )}
-      <span className="text-[13px] font-bold">
-        {children}
+    <div className={className}>
+      <label htmlFor={htmlFor} className="mb-2 block text-[14px] font-bold">
+        {label}
         {required && <span style={{ color: "var(--crimson)" }}> *</span>}
-      </span>
-      {hint && (
-        <span className="text-[12px]" style={{ color: "var(--ink-mute)" }}>
-          {hint}
-        </span>
-      )}
-    </label>
+      </label>
+      {children}
+    </div>
   );
 }
 
-function SectionHead({ children }: { children: ReactNode }) {
+// 오른쪽 끝에 화살표(▾)가 있는 선택칸
+function Select({ id, value, onChange, children }: { id: string; value: string; onChange: (v: string) => void; children: ReactNode }) {
   return (
-    <div className="mb-4 mt-8 flex items-center gap-3 first:mt-0">
-      <span className="font-[family-name:var(--font-display)] text-[12px] font-bold uppercase tracking-[.12em]" style={{ color: "var(--ink-soft)" }}>
+    <div className="relative">
+      <select id={id} value={value} onChange={(e) => onChange(e.target.value)} className={selectCls} style={{ borderColor: "var(--rule)" }}>
         {children}
-      </span>
-      <span className="h-px flex-1" style={{ background: "var(--rule)" }} />
+      </select>
+      <svg className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        <path d="M3.5 6l4.5 4.5L12.5 6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
     </div>
   );
 }
@@ -89,7 +84,6 @@ export function IntakeForm({
   discType,
   onDiscDate,
   onDiscType,
-  caseNo,
   busy,
   onSubmit,
   submitted,
@@ -103,125 +97,155 @@ export function IntakeForm({
   discType: string;
   onDiscDate: (v: string) => void;
   onDiscType: (v: string) => void;
-  caseNo: string | null;
   busy: boolean;
   onSubmit: () => void;
   submitted: boolean;
   onFillExample?: () => void;
 }) {
+  const [discOn, setDiscOn] = useState(false);
+  const on = discOn || !!discDate; // 예시 자료를 불러와 날짜가 들어오면 자동으로 켜진다
   const disc = discDate ? disclosureStatus({ date: discDate, type: discType }) : null;
+  const ok = isSubmittable(form);
   const text = (k: keyof IntakeFormState) => ({
     id: `intake-${k}`,
     value: form[k],
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange({ [k]: e.target.value }),
   });
+  const { input: fileInput, list: fileList, busy: fileBusy, error: fileError, add: addFiles } = useFileAttach(form.material, (material) => onChange({ material }));
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
-      <div className="min-w-0">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <SectionHead>기본 정보</SectionHead>
-          </div>
-          {onFillExample && (
-            <button
-              type="button"
-              onClick={onFillExample}
-              className="mt-[1px] shrink-0 text-[10.5px] underline underline-offset-2 opacity-40 transition hover:opacity-100"
-              style={{ color: "var(--ink-soft)" }}
-            >
-              예시 채우기
-            </button>
-          )}
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <Label htmlFor="intake-title" required>발명 명칭 (가칭)</Label>
-            <input {...text("title")} placeholder="예: 표면적을 늘린 이중 주름 공기청정기 필터" className={fieldCls} style={{ borderColor: "var(--rule)" }} />
-          </div>
-          <div>
-            <Label htmlFor="intake-product">적용 제품</Label>
-            <input {...text("product")} placeholder="예: 가정용 공기청정기" className={fieldCls} style={{ borderColor: "var(--rule)" }} />
-          </div>
-          <div>
-            <Label htmlFor="intake-stage">개발 단계</Label>
-            <select id="intake-stage" value={stage} onChange={(e) => onStage(e.target.value as DevStage)} className={fieldCls} style={{ borderColor: "var(--rule)" }}>
-              {DEV_STAGES.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="intake-inventor">발명자</Label>
-            <input {...text("inventor")} placeholder="이름" className={fieldCls} style={{ borderColor: "var(--rule)" }} />
-          </div>
-          <div>
-            <Label htmlFor="intake-dept">소속</Label>
-            <input {...text("dept")} placeholder="예: 선행개발팀" className={fieldCls} style={{ borderColor: "var(--rule)" }} />
-          </div>
-        </div>
+    <div className="space-y-5">
+      <Field label="발명 명칭 (가칭)" required htmlFor="intake-title">
+        <input {...text("title")} placeholder="예: 이중 주름 공기청정기 필터" className={fieldCls} style={{ borderColor: "var(--rule)" }} />
+      </Field>
 
-        <SectionHead>발명 자료</SectionHead>
-        <MaterialInput value={form.material} onChange={(material) => onChange({ material })} />
-
-        <SectionHead>외부 공개 예정</SectionHead>
-        <p className="mb-3 text-[12.5px]" style={{ color: "var(--ink-soft)" }}>
-          논문·전시·고객 제안 전에는 출원 여부를 먼저 정해야 합니다. 해외는 공개 후 출원이 어려운 국가가 많습니다.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <select value={discType} onChange={(e) => onDiscType(e.target.value)} className={`${fieldCls} !w-auto`} style={{ borderColor: "var(--rule)" }} aria-label="공개 유형">
-            {DISCLOSURE_TYPES.map((t) => (
-              <option key={t}>{t}</option>
+      <Field label="연구원 자료" required htmlFor="intake-material">
+        <textarea
+          {...text("material")}
+          rows={5}
+          placeholder="메모, 보고서, 메신저 내용을 그대로 붙여넣기"
+          className="min-h-[132px] w-full resize-y rounded-[10px] border bg-white px-3.5 py-3 text-[15px] leading-relaxed outline-none transition placeholder:text-[var(--ink-mute)] focus:border-[var(--crimson)] focus:shadow-[0_0_0_3px_rgba(29,79,216,.12)]"
+          style={{ borderColor: "var(--rule)" }}
+        />
+        {(fileList.length > 0 || fileError) && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[12.5px]">
+            {fileList.map((f, i) => (
+              <span key={`${f.name}-${i}`} className="rounded-full px-2.5 py-0.5 font-bold" style={{ background: "var(--crimson-soft)", color: "var(--crimson)" }}>
+                {f.name} · {f.note}
+              </span>
             ))}
-          </select>
-          <input type="date" value={discDate} onChange={(e) => onDiscDate(e.target.value)} className={`${fieldCls} !w-auto`} style={{ borderColor: "var(--rule)" }} aria-label="공개 예정일" />
-          {discDate && (
-            <Button variant="ghost" onClick={() => onDiscDate("")}>
-              공개 예정 없음
-            </Button>
+            {fileError && (
+              <span className="font-bold" style={{ color: "var(--crimson)" }}>
+                {fileError}
+              </span>
+            )}
+          </div>
+        )}
+      </Field>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Field label="적용 제품" htmlFor="intake-product">
+          <input {...text("product")} className={fieldCls} style={{ borderColor: "var(--rule)" }} />
+        </Field>
+        <Field label="개발 단계" htmlFor="intake-stage">
+          <Select id="intake-stage" value={stage} onChange={(v) => onStage(v as DevStage)}>
+            {DEV_STAGES.map((s) => (
+              <option key={s}>{s}</option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="발명자" htmlFor="intake-inventor">
+          <input {...text("inventor")} className={fieldCls} style={{ borderColor: "var(--rule)" }} />
+        </Field>
+        <Field label="소속" htmlFor="intake-dept">
+          <input {...text("dept")} className={fieldCls} style={{ borderColor: "var(--rule)" }} />
+        </Field>
+      </div>
+
+      <div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="외부 공개 예정" htmlFor="intake-disc">
+            <Select
+              id="intake-disc"
+              value={on ? discType : "없음"}
+              onChange={(v) => {
+                if (v === "없음") {
+                  setDiscOn(false);
+                  onDiscDate("");
+                } else {
+                  setDiscOn(true);
+                  onDiscType(v);
+                }
+              }}
+            >
+              <option>없음</option>
+              {DISCLOSURE_TYPES.map((t) => (
+                <option key={t}>{t}</option>
+              ))}
+            </Select>
+          </Field>
+          {on && (
+            <Field label="공개 예정일" htmlFor="intake-disc-date">
+              <input id="intake-disc-date" type="date" value={discDate} onChange={(e) => onDiscDate(e.target.value)} className={fieldCls} style={{ borderColor: "var(--rule)" }} />
+            </Field>
           )}
         </div>
         {disc && (
-          <p className="mt-2 text-[12.5px] font-bold" style={{ color: disc.level === "여유" ? "var(--ink-soft)" : "var(--crimson)" }}>
+          <p className="mt-2 text-[13px] font-bold" style={{ color: disc.level === "여유" ? "var(--ink-soft)" : "var(--crimson)" }}>
             {disc.message}
           </p>
         )}
       </div>
 
-      {/* 접수 요약 */}
-      <aside className="lg:sticky lg:top-20 lg:self-start">
-        <div className="border bg-white" style={{ borderColor: "var(--rule)" }}>
-          <div className="border-b px-4 py-3" style={{ borderColor: "var(--rule)" }}>
-            <div className="text-[11px] font-bold" style={{ color: "var(--ink-mute)" }}>
-              접수번호
-            </div>
-            <div className="font-mono text-[14px] font-bold" style={{ color: caseNo ? "var(--ink)" : "var(--ink-mute)" }}>
-              {caseNo ?? "접수 시 발번"}
-            </div>
-          </div>
-          <div className="px-4 py-4" style={{ borderColor: "var(--rule)" }}>
-            <Button arrow onClick={onSubmit} loading={busy} disabled={!isSubmittable(form)}>
-              {submitted ? "다시 검토 요청" : "AI 검토 요청"}
-            </Button>
-            <p className="mt-2.5 text-[11.5px] leading-snug" style={{ color: "var(--ink-soft)" }}>
-              * 표시만 필수입니다. 자료에 빠진 내용은 InPro가 출원 체크리스트 8개 항목으로 짚고, 연구원에게 보낼 질문을 만듭니다.
-            </p>
-          </div>
-        </div>
-      </aside>
+      {/* 버튼 줄: 보조 버튼은 왼쪽, 검토 요청은 오른쪽 끝 */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-3 border-t pt-6" style={{ borderColor: "var(--rule)" }}>
+        {onFillExample && (
+          <button type="button" onClick={onFillExample} className="h-10 rounded-[10px] border px-4 text-[14px] font-bold transition hover:border-[var(--crimson)] hover:text-[var(--crimson)]" style={{ borderColor: "var(--rule)" }}>
+            예시 자료 불러오기
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => fileInput.current?.click()}
+          disabled={fileBusy}
+          className="h-10 rounded-[10px] border px-4 text-[14px] font-bold transition hover:border-[var(--crimson)] hover:text-[var(--crimson)] disabled:opacity-50"
+          style={{ borderColor: "var(--rule)" }}
+        >
+          {fileBusy ? "읽는 중…" : "파일 첨부"}
+        </button>
+        <input ref={fileInput} type="file" accept=".pdf,.txt,.md" multiple hidden onChange={(e) => addFiles(e.target.files)} />
+        {!ok && (
+          <span className="ml-1 text-[13px] font-bold" style={{ color: "var(--crimson)" }}>
+            발명 명칭과 연구원 자료 입력 필요
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={!ok || busy}
+          className="ml-auto inline-flex h-[52px] items-center gap-2 rounded-[10px] px-[26px] text-[15px] font-bold text-white transition hover:brightness-110 disabled:opacity-35 disabled:hover:brightness-100"
+          style={{ background: "var(--crimson)" }}
+        >
+          {busy && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />}
+          {submitted ? "다시 검토 요청" : "AI 검토 요청"}
+        </button>
+      </div>
+
+      <p className="text-[13px]" style={{ color: "var(--ink-mute)" }}>
+        데모는 무료 AI 사용. 실제 미공개 발명 입력 금지
+      </p>
     </div>
   );
 }
 
-// 붙여넣기 + 파일 올리기. PDF는 서버에서 글자만 뽑고, 텍스트 파일은 브라우저에서 바로 읽는다.
-function MaterialInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [files, setFiles] = useState<{ name: string; note: string }[]>([]);
+// 파일 첨부: PDF는 서버에서 글자만 뽑고, 텍스트 파일은 브라우저에서 바로 읽어 자료 칸 뒤에 붙인다
+function useFileAttach(value: string, setValue: (v: string) => void) {
+  const input = useRef<HTMLInputElement>(null);
+  const [list, setList] = useState<{ name: string; note: string }[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [drag, setDrag] = useState(false);
 
-  async function readFile(file: File): Promise<{ text: string; note: string }> {
+  async function read(file: File): Promise<{ text: string; note: string }> {
     if (/\.(txt|md)$/i.test(file.name)) {
       const text = (await file.text()).trim();
       return { text, note: `${text.length.toLocaleString()}자` };
@@ -234,81 +258,24 @@ function MaterialInput({ value, onChange }: { value: string; onChange: (v: strin
     return { text: data.text, note: `${data.pages}쪽${data.truncated ? " · 앞부분만" : ""}` };
   }
 
-  async function addFiles(list: FileList | null) {
-    if (!list?.length) return;
+  async function add(files: FileList | null) {
+    if (!files?.length) return;
     setBusy(true);
     setError(null);
     let next = value;
-    for (const file of Array.from(list)) {
+    for (const file of Array.from(files)) {
       try {
-        const { text, note } = await readFile(file);
+        const { text, note } = await read(file);
         next = [next.trim(), `[파일: ${file.name}]\n${text}`].filter(Boolean).join("\n\n");
-        setFiles((f) => [...f, { name: file.name, note }]);
+        setList((f) => [...f, { name: file.name, note }]);
       } catch (e) {
         setError(`${file.name}: ${e instanceof Error ? e.message : "읽기 실패"}`);
       }
     }
-    onChange(next);
+    setValue(next);
     setBusy(false);
-    if (inputRef.current) inputRef.current.value = "";
+    if (input.current) input.current.value = "";
   }
 
-  return (
-    <div>
-      <Label htmlFor="intake-material" required hint="메모·보고서·메신저 내용을 그대로 붙여넣거나 파일을 올려주세요. 칸을 나눠 다시 쓸 필요 없습니다.">
-        연구원 자료
-      </Label>
-      <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDrag(true);
-        }}
-        onDragLeave={() => setDrag(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDrag(false);
-          addFiles(e.dataTransfer.files);
-        }}
-        className="border bg-white transition"
-        style={{ borderColor: drag ? "var(--crimson)" : "var(--rule)", boxShadow: drag ? "0 0 0 3px rgba(29,79,216,.08)" : undefined }}
-      >
-        <textarea
-          id="intake-material"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          rows={12}
-          placeholder={"예) 기존 필터는 주름을 한 번 접는 방식이라… 이번 안은 주름 빗면에 2차 주름을 넣고…\n\n문제, 기존 방식, 구조, 실험 결과가 섞여 있어도 괜찮습니다."}
-          className="block w-full resize-y bg-transparent px-3 py-2.5 text-[14px] leading-relaxed outline-none"
-        />
-        <div className="flex flex-wrap items-center gap-2 border-t px-3 py-2" style={{ borderColor: "var(--hairline)" }}>
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            disabled={busy}
-            className="border px-2.5 py-1 text-[12px] font-bold transition hover:border-[var(--crimson)] hover:text-[var(--crimson)] disabled:opacity-50"
-            style={{ borderColor: "var(--rule)" }}
-          >
-            {busy ? "읽는 중…" : "+ 파일 올리기"}
-          </button>
-          <span className="text-[11.5px]" style={{ color: "var(--ink-mute)" }}>
-            PDF · TXT · MD, 끌어다 놓아도 됩니다
-          </span>
-          {files.map((f, i) => (
-            <span key={`${f.name}-${i}`} className="px-2 py-0.5 text-[11.5px] font-bold" style={{ background: "var(--crimson-soft)", color: "var(--crimson)" }}>
-              {f.name} · {f.note}
-            </span>
-          ))}
-          <span className="ml-auto font-mono text-[10.5px]" style={{ color: "var(--ink-mute)" }}>
-            {value.trim().length.toLocaleString()}자
-          </span>
-        </div>
-        <input ref={inputRef} type="file" accept=".pdf,.txt,.md" multiple hidden onChange={(e) => addFiles(e.target.files)} />
-      </div>
-      {error && (
-        <p className="mt-1.5 text-[12px] font-bold" style={{ color: "var(--crimson)" }}>
-          {error}
-        </p>
-      )}
-    </div>
-  );
+  return { input, list, busy, error, add };
 }
