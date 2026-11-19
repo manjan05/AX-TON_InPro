@@ -15,7 +15,7 @@ function Highlight({ text, term }: { text: string; term: string }) {
   return (
     <>
       {text.slice(0, i)}
-      <mark className="px-0.5" style={{ background: "rgba(110,11,20,.14)", color: "var(--ink)", fontWeight: 700 }}>
+      <mark className="px-0.5" style={{ background: "rgba(29,79,216,.14)", color: "var(--ink)", fontWeight: 700 }}>
         {term}
       </mark>
       {text.slice(i + term.length)}
@@ -73,7 +73,7 @@ export function DocCard({
   return (
     <li className="border bg-white transition" style={{ borderColor: selected ? "var(--crimson)" : "var(--rule)", boxShadow: selected ? "inset 3px 0 0 var(--crimson)" : "none" }}>
       <div className="flex items-start gap-3 p-4">
-        <input type="checkbox" className="mt-1 h-4 w-4 accent-[#6e0b14]" checked={selected} onChange={onToggle} aria-label={`${doc.title} 비교에 포함`} />
+        <input type="checkbox" className="mt-1 h-4 w-4 accent-[#1d4fd8]" checked={selected} onChange={onToggle} aria-label={`${doc.title} 비교에 포함`} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2">
             <span className="font-mono text-[11px] font-bold" style={{ color: "var(--ink-mute)" }}>
@@ -93,7 +93,7 @@ export function DocCard({
                     ? { background: "var(--crimson)", color: "#fff" }
                     : doc.status === "공개"
                       ? { border: "1px solid var(--rule)", color: "var(--ink)" }
-                      : { background: "#ecebe7", color: "var(--ink-mute)", textDecoration: "line-through" }
+                      : { background: "#eef1f6", color: "var(--ink-mute)", textDecoration: "line-through" }
                 }
                 title={doc.status === "등록" ? "살아 있는 권리" : doc.status === "공개" ? "심사 중" : "권리 없음 · 선행기술로만 의미"}
               >
@@ -117,7 +117,7 @@ export function DocCard({
       </div>
 
       {open && ex && (
-        <div className="grid gap-4 border-t px-4 py-4 md:grid-cols-[1fr_1.2fr]" style={{ borderColor: "#eceae6", background: "#fcfbfa" }}>
+        <div className="grid gap-4 border-t px-4 py-4 md:grid-cols-[1fr_1.2fr]" style={{ borderColor: "#e9edf3", background: "#fafbfe" }}>
           <div>
             <div className="mb-2 text-[11px] font-bold" style={{ color: "var(--ink-mute)" }}>
               겹치는 검색어
@@ -167,7 +167,7 @@ export function DocCard({
       )}
 
       {!selected && (askReason || excluded) && (
-        <div className="flex flex-wrap items-center gap-1.5 border-t px-4 py-2.5 text-[12px]" style={{ borderColor: "#eceae6" }}>
+        <div className="flex flex-wrap items-center gap-1.5 border-t px-4 py-2.5 text-[12px]" style={{ borderColor: "#e9edf3" }}>
           <span className="mr-1 font-bold" style={{ color: "var(--ink-soft)" }}>
             제외 이유
           </span>
@@ -202,9 +202,9 @@ export function NearMissPanel({ meta, onAdd }: { meta: SearchMeta; onAdd: (id: s
               상위 밖 {meta.nearMiss.total}건 중 {meta.nearMiss.items.length}건
             </span>
           </div>
-          <ul className="divide-y" style={{ borderColor: "#eceae6" }}>
+          <ul className="divide-y" style={{ borderColor: "#e9edf3" }}>
             {meta.nearMiss.items.map((n) => (
-              <li key={n.id} className="flex items-center gap-3 px-4 py-2.5" style={{ borderColor: "#eceae6" }}>
+              <li key={n.id} className="flex items-center gap-3 px-4 py-2.5" style={{ borderColor: "#e9edf3" }}>
                 <span className="font-mono text-[11px]" style={{ color: "var(--ink-mute)" }}>
                   #{n.rank}
                 </span>

@@ -17,12 +17,12 @@ interface Step {
 const chip = (text: string, on = false) => (
   <span
     className="inline-block px-2 py-0.5 text-[10.5px] font-bold"
-    style={on ? { background: "var(--crimson)", color: "#fff" } : { background: "#ecebe7", color: "#5f5e5a" }}
+    style={on ? { background: "var(--crimson)", color: "#fff" } : { background: "#eef1f6", color: "#4b5563" }}
   >
     {text}
   </span>
 );
-const bar = (w: string) => <div className="mb-1.5 h-[5px]" style={{ width: w, background: "#d6d5d1" }} />;
+const bar = (w: string) => <div className="mb-1.5 h-[5px]" style={{ width: w, background: "#d3dae6" }} />;
 
 const STEPS: Step[] = [
   {
@@ -35,16 +35,16 @@ const STEPS: Step[] = [
     preview: (
       <>
         <div className="mb-3 flex items-center justify-between">
-          <span className="font-mono text-[10px] tracking-widest text-[#77756f]">연구원 메모</span>
+          <span className="font-mono text-[10px] tracking-widest text-[#6b7280]">연구원 메모</span>
           {chip("공개 D-10", true)}
         </div>
         {bar("92%")}
         {bar("84%")}
         {bar("70%")}
         <div className="mt-4 space-y-1.5 text-[11.5px]">
-          <div className="font-bold text-[#3a3936]">빠진 항목 3</div>
+          <div className="font-bold text-[#374151]">빠진 항목 3</div>
           {["비교 실험 수치", "제어 조건", "도면"].map((t) => (
-            <div key={t} className="px-2 py-1" style={{ background: "#efe2e2", color: "var(--crimson)" }}>
+            <div key={t} className="px-2 py-1" style={{ background: "#e7eefc", color: "var(--crimson)" }}>
               {t}
             </div>
           ))}
@@ -61,16 +61,16 @@ const STEPS: Step[] = [
     human: { who: "연구원", does: "질문 3개 정도에 답합니다." },
     preview: (
       <div className="space-y-2.5 text-[11.5px]">
-        <div className="max-w-[85%] px-3 py-2" style={{ background: "#ecebe7", color: "#3a3936" }}>
+        <div className="max-w-[85%] px-3 py-2" style={{ background: "#eef1f6", color: "#374151" }}>
           <b>Q.</b> 유량을 바꾸는 온도 기준은 몇 도인가요?
         </div>
         <div className="ml-auto max-w-[80%] px-3 py-2 text-white" style={{ background: "var(--crimson)" }}>
           <b>A.</b> 35℃ 이상이면 유량 2배로 올립니다.
         </div>
-        <div className="max-w-[85%] px-3 py-2" style={{ background: "#ecebe7", color: "#3a3936" }}>
+        <div className="max-w-[85%] px-3 py-2" style={{ background: "#eef1f6", color: "#374151" }}>
           <b>Q.</b> 기존 구조와 실험 조건을 같게 맞췄나요?
         </div>
-        <div className="pt-1 text-[10.5px] text-[#77756f]">→ 답변 반영해 기술 구성 갱신</div>
+        <div className="pt-1 text-[10.5px] text-[#6b7280]">→ 답변 반영해 기술 구성 갱신</div>
       </div>
     ),
   },
@@ -88,12 +88,12 @@ const STEPS: Step[] = [
           ["지그재그 유로", "차이 후보", false],
           ["온도 기반 유량 제어", "근거 부족", true],
         ].map(([n, r, hl]) => (
-          <div key={n as string} className="flex items-center justify-between border-t py-2.5" style={{ borderColor: "#e3e2de" }}>
-            <span className="font-bold text-[#3a3936]">{n}</span>
+          <div key={n as string} className="flex items-center justify-between border-t py-2.5" style={{ borderColor: "#e3e8f0" }}>
+            <span className="font-bold text-[#374151]">{n}</span>
             {chip(r as string, hl as boolean)}
           </div>
         ))}
-        <div className="mt-2 border-l-2 pl-2 text-[10.5px] text-[#6c6b66]" style={{ borderColor: "#8f8e8a" }}>
+        <div className="mt-2 border-l-2 pl-2 text-[10.5px] text-[#6c6b66]" style={{ borderColor: "#8892a3" }}>
           “…온도 센서의 측정값에 따라 펌프의 유량을 조절…”
         </div>
       </div>
@@ -113,16 +113,16 @@ const STEPS: Step[] = [
           ["경쟁사 모방 가능성", 2],
         ].map(([label, n]) => (
           <div key={label as string}>
-            <div className="mb-1 font-bold text-[#3a3936]">{label}</div>
+            <div className="mb-1 font-bold text-[#374151]">{label}</div>
             <div className="flex gap-1">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="h-2 flex-1" style={{ background: i < (n as number) ? "var(--crimson)" : "#dad9d5" }} />
+                <div key={i} className="h-2 flex-1" style={{ background: i < (n as number) ? "var(--crimson)" : "#d3dae6" }} />
               ))}
             </div>
           </div>
         ))}
-        <div className="border-t pt-2" style={{ borderColor: "#e3e2de" }}>
-          <span className="text-[#77756f]">AI 추천 </span>
+        <div className="border-t pt-2" style={{ borderColor: "#e3e8f0" }}>
+          <span className="text-[#6b7280]">AI 추천 </span>
           {chip("국내 출원", true)}
         </div>
       </div>
@@ -142,11 +142,11 @@ const STEPS: Step[] = [
           ["온도 센서", "대체 가능", "우회 쉬움"],
           ["펌프 유량 조절", "대체 가능", "우회 쉬움"],
         ].map(([n, r, d]) => (
-          <div key={n} className="flex items-center justify-between gap-2 border-t py-2.5" style={{ borderColor: "#e3e2de" }}>
-            <span className="font-bold text-[#3a3936]">{n}</span>
+          <div key={n} className="flex items-center justify-between gap-2 border-t py-2.5" style={{ borderColor: "#e3e8f0" }}>
+            <span className="font-bold text-[#374151]">{n}</span>
             <span className="flex gap-1">
               {chip(r, r === "핵심")}
-              <span className="text-[10px] text-[#77756f]">{d}</span>
+              <span className="text-[10px] text-[#6b7280]">{d}</span>
             </span>
           </div>
         ))}
@@ -168,12 +168,12 @@ const STEPS: Step[] = [
           {chip("영업비밀")}
           {chip("보류")}
         </div>
-        <div className="mb-3 flex items-center gap-2 font-bold text-[#3a3936]">
+        <div className="mb-3 flex items-center gap-2 font-bold text-[#374151]">
           <span className="grid h-5 w-5 place-items-center text-white" style={{ background: "var(--crimson)" }}>✓</span>
           연구소장 승인
         </div>
-        <div className="border p-2.5" style={{ borderColor: "#e3e2de" }}>
-          <div className="font-mono text-[10px] text-[#77756f]">변리사_전달자료.pdf</div>
+        <div className="border p-2.5" style={{ borderColor: "#e3e8f0" }}>
+          <div className="font-mono text-[10px] text-[#6b7280]">변리사_전달자료.pdf</div>
           {bar("80%")}
           {bar("64%")}
         </div>
@@ -183,10 +183,10 @@ const STEPS: Step[] = [
 ];
 
 const ACTOR_COLORS: Record<Actor, string> = {
-  연구원: "#3a3936",
+  연구원: "#374151",
   담당자: "var(--crimson)",
   승인자: "var(--crimson)",
-  AI: "#77756f",
+  AI: "#6b7280",
 };
 
 export function WorkflowSection() {
@@ -346,13 +346,13 @@ export function WorkflowSection() {
 
         <div className="lp-frame grid min-h-[340px] place-items-center p-8">
           <div key={active} className="lp-fade w-full max-w-[340px] bg-white p-5 shadow-[0_30px_40px_-30px_rgba(0,0,0,.5)]">
-            <div className="mb-3 flex items-center justify-between border-b pb-2" style={{ borderColor: "#e3e2de" }}>
+            <div className="mb-3 flex items-center justify-between border-b pb-2" style={{ borderColor: "#e3e8f0" }}>
               <span className="font-[family-name:var(--font-display)] text-[11px] font-bold uppercase tracking-[.1em]" style={{ color: "var(--crimson)" }}>
                 InPro · {s.title}
               </span>
               <span className="flex gap-1">
-                <i className="block h-1.5 w-1.5 rounded-full bg-[#d6d5d1]" />
-                <i className="block h-1.5 w-1.5 rounded-full bg-[#d6d5d1]" />
+                <i className="block h-1.5 w-1.5 rounded-full bg-[#d3dae6]" />
+                <i className="block h-1.5 w-1.5 rounded-full bg-[#d3dae6]" />
               </span>
             </div>
             {s.preview}

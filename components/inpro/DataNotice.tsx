@@ -7,7 +7,7 @@ export function DataNotice({ defaultOpen = false }: { defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   const warn = DATA_POLICY.find((p) => p.warn);
   return (
-    <div className="border text-[12.5px]" style={{ borderColor: "#e3caca", background: "#faf3f3" }}>
+    <div className="border text-[12.5px]" style={{ borderColor: "#c3d3f5", background: "#f3f7fe" }}>
       <div className="flex flex-wrap items-start justify-between gap-2 px-4 py-3">
         <p className="min-w-0 flex-1 leading-snug">
           <b style={{ color: "var(--crimson)" }}>데이터 처리 방식</b> · InPro는 사건 내용을 저장하지 않지만, AI 단계마다 내용이 Google Gemini API로 전송됩니다.{" "}
@@ -18,7 +18,7 @@ export function DataNotice({ defaultOpen = false }: { defaultOpen?: boolean }) {
         </button>
       </div>
       {open && (
-        <dl className="grid gap-x-4 gap-y-2 border-t px-4 py-3 sm:grid-cols-[96px_1fr]" style={{ borderColor: "#e3caca" }}>
+        <dl className="grid gap-x-4 gap-y-2 border-t px-4 py-3 sm:grid-cols-[96px_1fr]" style={{ borderColor: "#c3d3f5" }}>
           {DATA_POLICY.map((p) => (
             <div key={p.item} className="contents">
               <dt className="font-bold" style={{ color: p.warn ? "var(--crimson)" : "var(--ink)" }}>

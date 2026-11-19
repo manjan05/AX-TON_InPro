@@ -34,12 +34,12 @@ export function InventorView({
                   Q{i + 1}
                 </span>
                 <b className="text-[13.5px]">{q.componentName}</b>
-                <span className="px-1.5 py-0.5 text-[10.5px] font-bold" style={q.relation === "공통" ? { background: "var(--crimson)", color: "#fff" } : { background: "#efe2e2", color: "var(--crimson)" }}>
+                <span className="px-1.5 py-0.5 text-[10.5px] font-bold" style={q.relation === "공통" ? { background: "var(--crimson)", color: "#fff" } : { background: "#e7eefc", color: "var(--crimson)" }}>
                   {q.relation === "공통" ? "문헌에도 있음" : "문헌에 일부 있음"}
                 </span>
               </div>
               <div className="grid gap-px sm:grid-cols-2" style={{ background: "var(--rule)" }}>
-                <div className="bg-[#fcfbfa] p-4">
+                <div className="bg-[#fafbfe] p-4">
                   <div className="mb-1 text-[11px] font-bold" style={{ color: "var(--ink-mute)" }}>
                     선행 문헌 · {q.docTitle ?? "-"}
                   </div>

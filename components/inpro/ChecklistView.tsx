@@ -4,7 +4,7 @@ import type { CheckResult, CheckStatus } from "@/lib/inpro/checklist";
 
 const MARK: Record<CheckStatus, { sym: string; style: React.CSSProperties }> = {
   충족: { sym: "●", style: { background: "var(--crimson)", color: "#fff" } },
-  부족: { sym: "◐", style: { background: "#efe2e2", color: "var(--crimson)" } },
+  부족: { sym: "◐", style: { background: "#e7eefc", color: "var(--crimson)" } },
   없음: { sym: "○", style: { background: "#fff", color: "var(--ink-mute)", border: "1px solid var(--rule)" } },
 };
 
@@ -20,7 +20,7 @@ export function ChecklistView({ items }: { items: CheckResult[] }) {
         const isOpen = open === c.id;
         const missing = c.status !== "충족";
         return (
-          <li key={c.id} className="border text-[13px]" style={{ borderColor: missing ? "#e3caca" : "var(--hairline)", background: missing ? "#faf3f3" : "#fff" }}>
+          <li key={c.id} className="border text-[13px]" style={{ borderColor: missing ? "#c3d3f5" : "var(--hairline)", background: missing ? "#f3f7fe" : "#fff" }}>
             <button type="button" onClick={() => setOpen(isOpen ? null : c.id)} className="flex w-full items-center gap-2 px-3 py-2 text-left" aria-expanded={isOpen}>
               <span className="grid h-5 shrink-0 place-items-center px-1.5 text-[10.5px] font-bold" style={mk.style}>
                 {mk.sym} {c.status}

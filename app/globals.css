@@ -2,17 +2,18 @@
 
 /* InPro 디자인 토큰 — docs/design/inpro-design-guide.html 기준 */
 :root {
-  --paper: #ecebe7; /* 페이지 바탕 */
-  --paper-2: #f3f2ef; /* 버튼·카드 */
-  --studio: #a9a9ae; /* 히어로 띠 */
-  --studio-2: #d6d6d9;
-  --rule: #c9c6bf; /* 구분선 */
-  --ink: #1c1c1c;
-  --ink-soft: #5f5e5a;
-  --ink-mute: #8d8b86;
-  --crimson: #6e0b14; /* 유일한 강조색 */
-  --crimson-2: #8a1420;
-  --crimson-soft: #efe2e2;
+  --paper: #ffffff; /* 페이지 바탕 */
+  --paper-2: #f5f7fb; /* 버튼·카드 */
+  --studio: #c9d8f6; /* 히어로 띠 */
+  --studio-2: #e4ecfb;
+  --rule: #d8dee9; /* 구분선 */
+  --ink: #111827;
+  --ink-soft: #4b5563;
+  --ink-mute: #8892a3;
+  /* 변수 이름은 예전 그대로(crimson)지만 지금 값은 파랑이다. 강조색은 이 두 개만 바꾸면 된다. */
+  --crimson: #1d4fd8; /* 유일한 강조색 */
+  --crimson-2: #3b6ef0;
+  --crimson-soft: #e7eefc;
 
   /* 작업 화면(Workspace)에서 쓰는 이름 → 새 토큰으로 연결 */
   --panel: var(--paper-2);
@@ -47,7 +48,7 @@ body {
 
 /* ───────── Landing ───────── */
 .lp-wrap {
-  background: linear-gradient(#d8d8da, #a8a8ac) fixed;
+  background: linear-gradient(#f4f7fd, #dbe5f7) fixed;
   min-height: 100vh;
   padding: 40px 16px;
 }
@@ -244,7 +245,7 @@ body {
   align-content: center;
   gap: 2px;
   color: var(--crimson);
-  background: rgba(243, 242, 239, 0.75);
+  background: rgba(255,255,255, 0.75);
   backdrop-filter: blur(2px);
   transition:
     background 0.3s,
@@ -303,7 +304,7 @@ body {
   font-size: 17px;
   font-weight: 800;
   letter-spacing: 0.01em;
-  box-shadow: 0 18px 30px -18px rgba(110, 11, 20, 0.7);
+  box-shadow: 0 18px 30px -18px rgba(29,79,216, 0.7);
   transition:
     background 0.25s,
     transform 0.25s;
@@ -398,7 +399,7 @@ body {
 
 /* 흑백 "사진" 역할을 하는 제품 목업 프레임 */
 .lp-frame {
-  background: linear-gradient(160deg, #f6f6f7 0%, #d3d3d6 60%, #a5a5aa 100%);
+  background: linear-gradient(160deg, #f8faff 0%, #dce6f8 60%, #b9cbee 100%);
   position: relative;
   overflow: hidden;
 }
@@ -425,7 +426,7 @@ body {
 .ws-btn-primary {
   background: var(--crimson);
   color: #fff;
-  box-shadow: 0 14px 24px -16px rgba(110, 11, 20, 0.7);
+  box-shadow: 0 14px 24px -16px rgba(29,79,216, 0.7);
 }
 .ws-btn-primary:not(:disabled):hover {
   background: var(--crimson-2);
@@ -465,7 +466,7 @@ body {
   box-shadow: 0 24px 40px -32px rgba(0, 0, 0, 0.45);
 }
 .ws-sheet textarea {
-  background: repeating-linear-gradient(transparent 0 27px, #efeee9 27px 28px);
+  background: repeating-linear-gradient(transparent 0 27px, #eef1f6 27px 28px);
   line-height: 28px;
 }
 

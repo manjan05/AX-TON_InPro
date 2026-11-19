@@ -5,7 +5,7 @@ import type { ComponentEvidence } from "@/lib/inpro/basis";
 export function EvidenceLine({ ev }: { ev: ComponentEvidence | null }) {
   if (!ev) return null;
   return (
-    <div className="mt-1 border-l-2 pl-2.5 text-[11.5px] leading-snug" style={{ borderColor: "#e3caca", color: "var(--ink-soft)" }}>
+    <div className="mt-1 border-l-2 pl-2.5 text-[11.5px] leading-snug" style={{ borderColor: "#c3d3f5", color: "var(--ink-soft)" }}>
       <span className="font-bold" style={{ color: "var(--ink)" }}>
         근거 · {ev.componentName}
       </span>{" "}

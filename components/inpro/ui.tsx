@@ -83,8 +83,8 @@ export function Button({
 export function Tag({ children, tone = "blue" }: { children: ReactNode; tone?: "blue" | "orange" | "gray" | "green" }) {
   const tones = {
     blue: { background: "var(--blue-soft)", color: "var(--blue)" },
-    orange: { background: "#efe2e2", color: "#8a1420" },
-    gray: { background: "#e4e2dd", color: "var(--ink-soft)" },
+    orange: { background: "#e7eefc", color: "#1a43b8" },
+    gray: { background: "#e3e8f0", color: "var(--ink-soft)" },
     green: { background: "#e2e8df", color: "#3d5a35" },
   };
   return (
@@ -131,7 +131,7 @@ export function CompareTable({
               <tr
                 key={r.componentName}
                 className="border-b align-top"
-                style={{ borderColor: "var(--hairline)", background: isChanged ? "#f6efe9" : undefined }}
+                style={{ borderColor: "var(--hairline)", background: isChanged ? "#eef3fd" : undefined }}
               >
                 <td className="py-3 pr-3 font-bold" style={{ color: "var(--ink-2)" }}>
                   {r.componentName}
@@ -165,7 +165,7 @@ export function CompareTable({
                       “{r.quote}”
                     </blockquote>
                   ) : (
-                    <span className="text-[12px] font-bold" style={{ color: "#8a1420" }}>
+                    <span className="text-[12px] font-bold" style={{ color: "#1a43b8" }}>
                       원문 근거 없음
                     </span>
                   )}
@@ -183,7 +183,7 @@ export function CompareTable({
                         type="checkbox"
                         checked={confirmed?.has(r.componentName) ?? false}
                         onChange={() => onToggle(r.componentName)}
-                        className="h-4 w-4 accent-[#6e0b14]"
+                        className="h-4 w-4 accent-[#1d4fd8]"
                       />
                       확인
                     </label>

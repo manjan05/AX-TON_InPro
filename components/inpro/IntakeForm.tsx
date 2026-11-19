@@ -46,7 +46,7 @@ export const EXAMPLE_FORM: IntakeFormState = {
 export const isSubmittable = (f: IntakeFormState) => f.title.trim().length > 0 && f.material.trim().length >= 20;
 
 const fieldCls =
-  "w-full border bg-white px-3 py-2.5 text-[14px] leading-relaxed outline-none transition focus:border-[var(--crimson)] focus:shadow-[0_0_0_3px_rgba(110,11,20,.08)]";
+  "w-full border bg-white px-3 py-2.5 text-[14px] leading-relaxed outline-none transition focus:border-[var(--crimson)] focus:shadow-[0_0_0_3px_rgba(29,79,216,.08)]";
 
 function Label({ n, children, required, hint, htmlFor }: { n?: string; children: ReactNode; required?: boolean; hint?: string; htmlFor: string }) {
   return (
@@ -270,7 +270,7 @@ function MaterialInput({ value, onChange }: { value: string; onChange: (v: strin
           addFiles(e.dataTransfer.files);
         }}
         className="border bg-white transition"
-        style={{ borderColor: drag ? "var(--crimson)" : "var(--rule)", boxShadow: drag ? "0 0 0 3px rgba(110,11,20,.08)" : undefined }}
+        style={{ borderColor: drag ? "var(--crimson)" : "var(--rule)", boxShadow: drag ? "0 0 0 3px rgba(29,79,216,.08)" : undefined }}
       >
         <textarea
           id="intake-material"

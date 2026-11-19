@@ -9,7 +9,7 @@ export function LevelMeter({ level, label }: { level: Level; label?: string }) {
     <span className="inline-flex items-center gap-2">
       <span className="flex gap-0.5" aria-hidden="true">
         {[1, 2, 3].map((i) => (
-          <i key={i} className="block h-2.5 w-5" style={{ background: i <= n ? "var(--crimson)" : "#dad9d5" }} />
+          <i key={i} className="block h-2.5 w-5" style={{ background: i <= n ? "var(--crimson)" : "#d3dae6" }} />
         ))}
       </span>
       <span className="text-[13px] font-bold">{label ?? level}</span>
@@ -62,7 +62,7 @@ export function MetricCard({ label, children, sub }: { label: string; children: 
 
 export function DocSection({ n, title, tag, children }: { n: string; title: string; tag?: ReactNode; children: ReactNode }) {
   return (
-    <section className="border-t pt-5 first:border-t-0 first:pt-0" style={{ borderColor: "#e6e5e1" }}>
+    <section className="border-t pt-5 first:border-t-0 first:pt-0" style={{ borderColor: "#e3e8f0" }}>
       <h3 className="mb-2 flex flex-wrap items-center gap-2 text-[14px] font-extrabold">
         <span className="font-mono text-[12px]" style={{ color: "var(--crimson)" }}>
           {n}

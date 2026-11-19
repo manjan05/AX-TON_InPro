@@ -35,7 +35,7 @@ const CENTER = HEADS.length - 1; // 맨 위(오른쪽 끝) 문서에 근거 하�
 const bar = (w: string, dark = false): CSSProperties => ({
   width: w,
   height: 5,
-  background: dark ? "#8f8e8a" : "#c8c7c3",
+  background: dark ? "#8892a3" : "#cbd2de",
   marginBottom: 7,
 });
 
@@ -44,11 +44,11 @@ function Body({ kind, open, center }: { kind: Sheet["body"]; open: boolean; cent
     return (
       <div className="mt-1">
         {["공통", "차이 후보", "근거 부족"].map((t, i) => (
-          <div key={t} className="flex items-center justify-between border-t py-2" style={{ borderColor: "#e6e5e1" }}>
+          <div key={t} className="flex items-center justify-between border-t py-2" style={{ borderColor: "#e3e8f0" }}>
             <div style={{ ...bar(i === 1 ? "50%" : "58%"), marginBottom: 0 }} />
             <span
               className="px-1.5 text-[8px] font-bold"
-              style={i === 2 ? { background: "var(--crimson)", color: "#fff" } : { background: "#ecebe7", color: "#77756f" }}
+              style={i === 2 ? { background: "var(--crimson)", color: "#fff" } : { background: "#eef1f6", color: "#6b7280" }}
             >
               {t}
             </span>
@@ -61,7 +61,7 @@ function Body({ kind, open, center }: { kind: Sheet["body"]; open: boolean; cent
       <div className="mt-1 space-y-2">
         {["78%", "62%", "70%"].map((w, i) => (
           <div key={w} className="flex items-center gap-2">
-            <span className="grid h-3 w-3 place-items-center text-[8px] text-white" style={{ background: i < 2 ? "var(--crimson)" : "#d6d5d1" }}>
+            <span className="grid h-3 w-3 place-items-center text-[8px] text-white" style={{ background: i < 2 ? "var(--crimson)" : "#d3dae6" }}>
               {i < 2 ? "✓" : ""}
             </span>
             <div style={{ ...bar(w), marginBottom: 0 }} />
@@ -91,7 +91,7 @@ function Body({ kind, open, center }: { kind: Sheet["body"]; open: boolean; cent
       <div style={bar("92%")} />
       <div style={bar("88%")} />
       {center ? (
-        <div className="relative mb-[7px] h-[5px] w-[74%]" style={{ background: "#c8c7c3" }}>
+        <div className="relative mb-[7px] h-[5px] w-[74%]" style={{ background: "#cbd2de" }}>
           <div className="lp-evidence" style={{ width: open ? "100%" : "0%" }} />
           <span className="lp-evidence-tag" style={{ opacity: open ? 1 : 0 }}>
             근거 확인
@@ -151,7 +151,7 @@ export function HeroDocs() {
                 transitionDelay: `${i * 40}ms`,
               }}
             >
-              <div className="mb-3 truncate font-mono text-[9px] tracking-widest" style={{ color: center ? "var(--crimson)" : "#77756f" }}>
+              <div className="mb-3 truncate font-mono text-[9px] tracking-widest" style={{ color: center ? "var(--crimson)" : "#6b7280" }}>
                 {s.head}
               </div>
               <Body kind={s.body} open={open} center={center} />

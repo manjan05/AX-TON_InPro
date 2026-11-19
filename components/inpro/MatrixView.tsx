@@ -4,14 +4,14 @@ import { verdictLabels, type Matrix, type MatrixCell, type Presence, type RiskLe
 
 const MARK: Record<Presence, { sym: string; label: string; style: React.CSSProperties }> = {
   있음: { sym: "●", label: "있음", style: { background: "var(--crimson)", color: "#fff" } },
-  일부: { sym: "◐", label: "일부", style: { background: "#efe2e2", color: "var(--crimson)" } },
-  없음: { sym: "○", label: "없음", style: { background: "#fff", color: "#b5b4b0" } },
-  "확인 필요": { sym: "?", label: "확인 필요", style: { background: "#fff", color: "var(--ink-soft)", outline: "1px dashed #b5b4b0", outlineOffset: -4 } },
+  일부: { sym: "◐", label: "일부", style: { background: "#e7eefc", color: "var(--crimson)" } },
+  없음: { sym: "○", label: "없음", style: { background: "#fff", color: "#b6bfcd" } },
+  "확인 필요": { sym: "?", label: "확인 필요", style: { background: "#fff", color: "var(--ink-soft)", outline: "1px dashed #b6bfcd", outlineOffset: -4 } },
 };
 
 const RISK: Record<RiskLevel, React.CSSProperties> = {
   높음: { background: "var(--crimson)", color: "#fff" },
-  주의: { background: "#efe2e2", color: "var(--crimson)" },
+  주의: { background: "#e7eefc", color: "var(--crimson)" },
   낮음: { background: "#fff", color: "var(--ink)", border: "1px solid var(--rule)" },
 };
 
@@ -117,7 +117,7 @@ export function MatrixView({ m, readOnly }: { m: Matrix; readOnly?: boolean }) {
                     {d.label}
                   </div>
                   {d.live && (
-                    <div className="mx-auto mb-0.5 w-fit px-1 text-[9.5px] font-bold" style={{ background: "#efe2e2", color: "var(--crimson)" }}>
+                    <div className="mx-auto mb-0.5 w-fit px-1 text-[9.5px] font-bold" style={{ background: "#e7eefc", color: "var(--crimson)" }}>
                       등록
                     </div>
                   )}
@@ -187,7 +187,7 @@ export function MatrixView({ m, readOnly }: { m: Matrix; readOnly?: boolean }) {
             {m.components.find((c) => c.id === pick.componentId)?.name} × {m.docs.find((d) => d.id === pick.docId)?.label} ·{" "}
             <span style={{ color: "var(--crimson)" }}>{pick.presence}</span>
           </div>
-          {pick.quote && <p className="mt-1.5 border-l-2 pl-3 text-[13px] leading-relaxed" style={{ borderColor: "#d6d5d1" }}>“{pick.quote}”</p>}
+          {pick.quote && <p className="mt-1.5 border-l-2 pl-3 text-[13px] leading-relaxed" style={{ borderColor: "#d3dae6" }}>“{pick.quote}”</p>}
           <p className="mt-1.5 text-[12.5px]" style={{ color: "var(--ink-soft)" }}>
             {pick.note}
           </p>

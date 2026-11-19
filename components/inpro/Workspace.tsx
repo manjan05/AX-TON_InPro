@@ -552,7 +552,7 @@ export function Workspace() {
 
   return (
     <div className="min-h-screen w-full" style={{ background: "var(--paper)", color: "var(--ink)" }}>
-      <header className="no-print sticky top-0 z-30 border-b backdrop-blur" style={{ background: "rgba(236,235,231,.92)", borderColor: "var(--hairline)" }}>
+      <header className="no-print sticky top-0 z-30 border-b backdrop-blur" style={{ background: "rgba(255,255,255,.92)", borderColor: "var(--hairline)" }}>
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
           <InProLogo />
           <div className="flex items-center gap-2 text-[12px] font-bold" style={{ color: "var(--ink-soft)" }}>
@@ -620,7 +620,7 @@ export function Workspace() {
                             ? { background: "var(--crimson)", color: "#fff", borderColor: "var(--crimson)", transform: "scale(1.12)" }
                             : done && enabled
                               ? { background: "#fff", color: "var(--crimson)", borderColor: "var(--crimson)" }
-                              : { background: "rgba(255,255,255,.55)", color: "var(--ink-mute)", borderColor: "#b5b4b0" }
+                              : { background: "rgba(255,255,255,.55)", color: "var(--ink-mute)", borderColor: "#b6bfcd" }
                         }
                       >
                         {done && enabled && !active ? "✓" : n}
@@ -643,7 +643,7 @@ export function Workspace() {
       <main className={`mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 ${step === 3 ? "lg:grid-cols-[1fr_300px]" : ""}`}>
         <div className="min-w-0 space-y-5">
           {error && (
-            <div className="no-print border px-4 py-3 text-sm font-bold" style={{ borderColor: "#d9b8bb", background: "#efe2e2", color: "var(--crimson)" }}>
+            <div className="no-print border px-4 py-3 text-sm font-bold" style={{ borderColor: "#b8cdf3", background: "#e7eefc", color: "var(--crimson)" }}>
               {error}
             </div>
           )}
@@ -737,7 +737,7 @@ export function Workspace() {
                         답변 {answers.filter((x) => x.trim()).length} / {questions.length}
                       </span>
                     </div>
-                    <div className="h-1.5 w-40" style={{ background: "#e6e5e1" }}>
+                    <div className="h-1.5 w-40" style={{ background: "#e3e8f0" }}>
                       <div
                         className="h-full transition-all duration-300"
                         style={{ width: `${questions.length ? (answers.filter((x) => x.trim()).length / questions.length) * 100 : 0}%`, background: "var(--crimson)" }}
@@ -981,7 +981,7 @@ export function Workspace() {
                     <CompareTable rows={rows} confirmed={confirmed} changed={changed} onToggle={toggleConfirm} />
                   </Fold>
                   {isInvalidity ? (
-                    <div className="flex flex-wrap items-center gap-2 border p-4" style={{ borderColor: "var(--rule)", background: "#fcfbfa" }}>
+                    <div className="flex flex-wrap items-center gap-2 border p-4" style={{ borderColor: "var(--rule)", background: "#fafbfe" }}>
                       <span className="mr-2 text-[13px] font-bold">무효자료 조사는 우리 발명 검토(4~6단계)와 따로 보고서로 정리합니다.</span>
                       <Button
                         onClick={() => {
@@ -1078,7 +1078,7 @@ export function Workspace() {
 
                   <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
                     <article className="ws-sheet space-y-5 p-6 sm:p-8">
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3" style={{ borderColor: "#e6e5e1" }}>
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3" style={{ borderColor: "#e3e8f0" }}>
                         <div>
                           <div className="font-mono text-[10.5px] tracking-widest" style={{ color: "var(--ink-mute)" }}>
                             {caseNo ?? "CASE"} · 사내 출원 검토서
@@ -1223,7 +1223,7 @@ export function Workspace() {
                     const conflict = strengthConflict(scope.items, review.strength?.designAround);
                     if (!conflict || !review.strength) return null;
                     return (
-                      <div className="border p-4 text-[13px]" style={{ borderColor: "var(--crimson)", background: "#faf3f3" }}>
+                      <div className="border p-4 text-[13px]" style={{ borderColor: "var(--crimson)", background: "#f3f7fe" }}>
                         <b style={{ color: "var(--crimson)" }}>4단계 판단과 다릅니다.</b> 권리의 강도에서는 우회 어려움을 ‘{review.strength.designAround.level}’으로 봤지만, 경쟁사 관점에서 시도해 보니 ‘
                         {conflict.item.componentName}’은(는) {conflict.item.role}입니다. {conflict.item.reason}
                         <div className="mt-2">
@@ -1295,7 +1295,7 @@ export function Workspace() {
                               aria-checked={on}
                               onClick={() => setDecision(d)}
                               className="flex flex-col gap-1.5 border bg-white p-4 text-left transition"
-                              style={on ? { borderColor: "var(--crimson)", boxShadow: "inset 0 0 0 1px var(--crimson), 0 14px 24px -18px rgba(110,11,20,.6)" } : { borderColor: "var(--rule)" }}
+                              style={on ? { borderColor: "var(--crimson)", boxShadow: "inset 0 0 0 1px var(--crimson), 0 14px 24px -18px rgba(29,79,216,.6)" } : { borderColor: "var(--rule)" }}
                             >
                               <span className="flex items-center justify-between gap-2">
                                 <span className="flex items-center gap-2 text-[15px] font-extrabold">
@@ -1494,14 +1494,14 @@ export function Workspace() {
                             <tbody>
                               {distinctionSummary(handoff.scope, handoff.matrix).map((r) => (
                                 <tr key={r.componentName} className="align-top">
-                                  <td className="border-b px-2 py-2 font-bold" style={{ borderColor: "#eceae6" }}>{r.componentName}</td>
-                                  <td className="border-b px-2 py-2" style={{ borderColor: "#eceae6" }}>
-                                    <span className="px-1.5 py-0.5 text-[11px] font-bold" style={r.role === "핵심" ? { background: "var(--crimson)", color: "#fff" } : { background: "#efe2e2", color: "var(--crimson)" }}>
+                                  <td className="border-b px-2 py-2 font-bold" style={{ borderColor: "#e9edf3" }}>{r.componentName}</td>
+                                  <td className="border-b px-2 py-2" style={{ borderColor: "#e9edf3" }}>
+                                    <span className="px-1.5 py-0.5 text-[11px] font-bold" style={r.role === "핵심" ? { background: "var(--crimson)", color: "#fff" } : { background: "#e7eefc", color: "var(--crimson)" }}>
                                       {r.role}
                                     </span>
                                   </td>
-                                  <td className="border-b px-2 py-2" style={{ borderColor: "#eceae6", color: "var(--ink-soft)" }}>{r.evidence}</td>
-                                  <td className="border-b px-2 py-2" style={{ borderColor: "#eceae6" }}>{r.advice}</td>
+                                  <td className="border-b px-2 py-2" style={{ borderColor: "#e9edf3", color: "var(--ink-soft)" }}>{r.evidence}</td>
+                                  <td className="border-b px-2 py-2" style={{ borderColor: "#e9edf3" }}>{r.advice}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -1512,7 +1512,7 @@ export function Workspace() {
                     <DocSection n="01" title="발명 설명" tag={<Tag tone="green">연구원 확인</Tag>}>
                       <p className="whitespace-pre-line">{handoff.description}</p>
                       {qa.some((q) => q.answer.trim()) && (
-                        <ul className="mt-3 space-y-2 border-l-2 pl-3" style={{ borderColor: "#e6e5e1" }}>
+                        <ul className="mt-3 space-y-2 border-l-2 pl-3" style={{ borderColor: "#e3e8f0" }}>
                           {qa
                             .filter((q) => q.answer.trim())
                             .map((q) => (

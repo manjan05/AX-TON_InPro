@@ -8,7 +8,7 @@ const ROLES: ScopeRole[] = ["핵심", "대체 가능", "부가"];
 
 const EFFECT: Record<KeepsEffect, { label: string; style: React.CSSProperties }> = {
   유지: { label: "효과 유지 → 회피됨", style: { background: "var(--crimson)", color: "#fff" } },
-  일부: { label: "효과 일부", style: { background: "#efe2e2", color: "var(--crimson)" } },
+  일부: { label: "효과 일부", style: { background: "#e7eefc", color: "var(--crimson)" } },
   "안 됨": { label: "효과 없음 → 회피 실패", style: { border: "1px solid var(--rule)", color: "var(--ink-soft)" } },
 };
 
@@ -64,7 +64,7 @@ export function ScopeItemCard({
         </button>
 
         {open && (
-          <div className="mt-3 space-y-3 border-t pt-3" style={{ borderColor: "#eceae6" }}>
+          <div className="mt-3 space-y-3 border-t pt-3" style={{ borderColor: "#e9edf3" }}>
             {attempts.length ? (
               <ul className="space-y-3">
                 {attempts.map((a) => (
