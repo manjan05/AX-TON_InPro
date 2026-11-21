@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { InProLogo } from "@/components/inpro/ui";
 import { HeroMotion } from "@/components/landing/HeroMotion";
@@ -39,7 +40,9 @@ export default function Landing() {
           <div className="grid gap-12 md:grid-cols-[1.05fr_1fr] md:items-center md:gap-16">
             <div>
               <p className="lp-hero-sub mb-5">Intellectual Property, in progress.</p>
-              <h1 className="lp-hero-title">InPro</h1>
+              <h1>
+                <Image src="/logo-word.png" alt="InPro" width={700} height={293} priority className="h-auto w-[260px] md:w-[340px]" />
+              </h1>
               <p className="mt-9 max-w-[440px] text-[17px] leading-[1.75]" style={{ color: "var(--ink-soft)" }}>
                 특허 담당자가 1~2명인 회사에서 쓰는 발명 검토 도구. 접수부터 선행기술 조사, 권리범위 방향까지 한 사건으로 이어서 봅니다.
               </p>
