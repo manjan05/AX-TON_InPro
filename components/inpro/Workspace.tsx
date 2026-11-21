@@ -68,9 +68,9 @@ async function post<T>(url: string, body: unknown): Promise<T> {
 type SearchLog = { searchedAt: string; keywords: string[]; corpus: string; hits: number };
 
 
-export function Workspace() {
+export function Workspace({ initialView = "work" }: { initialView?: "work" | "my" }) {
   const [step, setStep] = useState(1);
-  const [view, setView] = useState<"work" | "my">("work"); // 작업 화면 / 내 작업
+  const [view, setView] = useState<"work" | "my">(initialView); // 작업 화면 / 내 작업
   const [maxStep, setMaxStep] = useState(1);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");

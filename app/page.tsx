@@ -19,9 +19,18 @@ export default function Landing() {
         {/* NAV */}
         <nav className="flex items-center justify-between px-[var(--pad)] py-6">
           <InProLogo size={34} />
-          <div className="flex gap-6">
-            <a href="#workflow" className="lp-nav-link">Workflow</a>
-            <a href="#pricing" className="lp-nav-link">Pricing</a>
+          <div className="flex items-center gap-1 text-[14px]">
+            {(
+              [
+                ["/workspace", "작업 화면"],
+                ["/workspace?view=my", "내 작업"],
+                ["/workspace", "처음부터"],
+              ] as const
+            ).map(([href, label]) => (
+              <Link key={label} href={href} className="rounded-full px-3.5 py-2 font-bold transition hover:bg-[var(--crimson-soft)]" style={{ color: "var(--ink-soft)" }}>
+                {label}
+              </Link>
+            ))}
           </div>
         </nav>
 
