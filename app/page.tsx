@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { InProLogo } from "@/components/inpro/ui";
-import { HeroMotion } from "@/components/landing/HeroMotion";
+import { HeroDocs } from "@/components/landing/HeroDocs";
 import { WorkflowSection } from "@/components/landing/WorkflowSection";
 import { PricingSection } from "@/components/landing/PricingSection";
 
@@ -50,7 +50,9 @@ export default function Landing() {
                 시작하기
               </Link>
             </div>
-            <HeroMotion />
+            <div className="relative h-[300px] w-full sm:h-[420px] md:h-[460px] md:-translate-x-24">
+              <HeroDocs />
+            </div>
           </div>
 
           <ol className="mt-20 grid gap-x-10 gap-y-2 md:grid-cols-4">
