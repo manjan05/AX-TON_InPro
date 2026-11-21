@@ -110,7 +110,7 @@ export function CandidateList({
             const on = selected.has(d.id);
             return (
               <li key={d.id} className="flex items-start gap-4 border-b py-5" style={{ borderColor: "var(--rule)" }}>
-                <input type="checkbox" className="mt-1.5 h-5 w-5 shrink-0 accent-[#1d4fd8]" checked={on} onChange={() => onToggle(d)} aria-label={`${d.title} 비교에 포함`} />
+                <input type="checkbox" className="mt-1.5 h-5 w-5 shrink-0 accent-[#1074d1]" checked={on} onChange={() => onToggle(d)} aria-label={`${d.title} 비교에 포함`} />
                 <div className="min-w-0 flex-1">
                   <div className="text-[17px] font-bold leading-snug">{d.title}</div>
                   <div className="mt-1.5 text-[14px]" style={{ color: "var(--ink-soft)" }}>

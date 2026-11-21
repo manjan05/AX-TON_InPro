@@ -28,7 +28,7 @@ function Radar({ scores }: { scores: Record<ScoreKey, number> }) {
         const [x, y] = pt(i, 1);
         return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="#dde3ec" strokeWidth="1" />;
       })}
-      <polygon points={data.map((p) => p.join(",")).join(" ")} fill="rgba(29,79,216,.14)" stroke="var(--crimson)" strokeWidth="1.8" strokeLinejoin="round" />
+      <polygon points={data.map((p) => p.join(",")).join(" ")} fill="rgba(16,116,209,.14)" stroke="var(--crimson)" strokeWidth="1.8" strokeLinejoin="round" />
       {data.map(([x, y], i) => (
         <circle key={i} cx={x} cy={y} r="4.2" fill="var(--crimson)" />
       ))}

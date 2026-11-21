@@ -148,7 +148,7 @@ export function CompareResult({
                       );
                     })}
                     <td className="px-5 py-3 text-center">
-                      <input type="checkbox" className="h-5 w-5 accent-[#1d4fd8]" checked={confirmed.has(c.name)} onChange={() => onToggle(c.name)} aria-label={`${c.name} 확인`} />
+                      <input type="checkbox" className="h-5 w-5 accent-[#1074d1]" checked={confirmed.has(c.name)} onChange={() => onToggle(c.name)} aria-label={`${c.name} 확인`} />
                     </td>
                   </tr>
                 );

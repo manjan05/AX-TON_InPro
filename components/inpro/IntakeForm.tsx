@@ -95,7 +95,7 @@ export function IntakeForm({
           {...text("material")}
           rows={5}
           placeholder="메모, 보고서, 메신저 내용을 그대로 붙여넣기"
-          className="min-h-[132px] w-full resize-y rounded-[10px] border bg-white px-3.5 py-3 text-[15px] leading-relaxed outline-none transition placeholder:text-[var(--ink-mute)] focus:border-[var(--crimson)] focus:shadow-[0_0_0_3px_rgba(29,79,216,.12)]"
+          className="min-h-[132px] w-full resize-y rounded-[10px] border bg-white px-3.5 py-3 text-[15px] leading-relaxed outline-none transition placeholder:text-[var(--ink-mute)] focus:border-[var(--crimson)] focus:shadow-[0_0_0_3px_rgba(16,116,209,.12)]"
           style={{ borderColor: "var(--rule)" }}
         />
         {(fileList.length > 0 || fileError) && (

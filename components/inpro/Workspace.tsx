@@ -67,10 +67,10 @@ async function post<T>(url: string, body: unknown): Promise<T> {
 
 type SearchLog = { searchedAt: string; keywords: string[]; corpus: string; hits: number };
 
-const inputCls = "rounded-none border px-3 py-2 text-sm outline-none focus:border-[var(--crimson)]";
 
 export function Workspace() {
   const [step, setStep] = useState(1);
+  const [view, setView] = useState<"work" | "my">("work"); // 작업 화면 / 내 작업
   const [maxStep, setMaxStep] = useState(1);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -558,10 +558,39 @@ export function Workspace() {
       <header className="no-print sticky top-0 z-30 border-b backdrop-blur" style={{ background: "rgba(255,255,255,.92)", borderColor: "var(--hairline)" }}>
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
           <InProLogo />
-          <div className="flex items-center gap-2 text-[12px] font-bold" style={{ color: "var(--ink-soft)" }}>
-            <span className="h-2 w-2 rounded-full" style={{ background: busy ? "var(--crimson)" : "#9fb38f" }} />
-            {busy ? "InPro AI 작업 중" : "준비됨"}
-          </div>
+          <nav className="flex items-center gap-1 text-[14px]" aria-label="주 메뉴">
+            {(
+              [
+                ["work", "작업 화면"],
+                ["my", "내 작업"],
+              ] as const
+            ).map(([k, label]) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setView(k)}
+                aria-current={view === k ? "page" : undefined}
+                className="rounded-full px-3.5 py-2 font-bold transition hover:bg-[var(--crimson-soft)]"
+                style={{ color: view === k ? "var(--crimson)" : "var(--ink-soft)" }}
+              >
+                {label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                if (!intake || window.confirm("지금 사건을 지우고 처음부터 시작할까요? 저장되지 않은 내용은 사라집니다.")) window.location.reload();
+              }}
+              className="rounded-full px-3.5 py-2 font-bold transition hover:bg-[var(--crimson-soft)]"
+              style={{ color: "var(--ink-soft)" }}
+            >
+              처음부터
+            </button>
+            <span className="ml-3 flex items-center gap-2 text-[12px] font-bold max-sm:hidden" style={{ color: "var(--ink-mute)" }}>
+              <span className="h-2 w-2 rounded-full" style={{ background: busy ? "var(--crimson)" : "#9fb38f" }} />
+              {busy ? "InPro AI 작업 중" : "준비됨"}
+            </span>
+          </nav>
         </div>
       </header>
 
@@ -631,9 +660,9 @@ export function Workspace() {
       </section>
 
       <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6">
-        <div className="min-w-0 space-y-5">
+        <div className={`min-w-0 space-y-5 ${view === "my" ? "hidden" : ""}`}>
           {error && (
-            <div className="no-print border px-4 py-3 text-sm font-bold" style={{ borderColor: "#b8cdf3", background: "#e7eefc", color: "var(--crimson)" }}>
+            <div className="no-print border px-4 py-3 text-sm font-bold" style={{ borderColor: "#b7d5f3", background: "#e6f1fb", color: "var(--crimson)" }}>
               {error}
             </div>
           )}
@@ -696,7 +725,7 @@ export function Workspace() {
                         value={answers[i] ?? ""}
                         onChange={(e) => setAnswers((a) => a.map((x, j) => (j === i ? e.target.value : x)))}
                         placeholder="발명자 답변을 붙여넣으세요"
-                        className="min-h-[84px] w-full resize-y rounded-[10px] border bg-white px-3.5 py-3 text-[15px] leading-relaxed outline-none transition placeholder:text-[var(--ink-mute)] focus:border-[var(--crimson)] focus:shadow-[0_0_0_3px_rgba(29,79,216,.12)]"
+                        className="min-h-[84px] w-full resize-y rounded-[10px] border bg-white px-3.5 py-3 text-[15px] leading-relaxed outline-none transition placeholder:text-[var(--ink-mute)] focus:border-[var(--crimson)] focus:shadow-[0_0_0_3px_rgba(16,116,209,.12)]"
                         style={{ borderColor: "var(--rule)" }}
                       />
                     </div>
@@ -1338,7 +1367,7 @@ export function Workspace() {
                                 <tr key={r.componentName} className="align-top">
                                   <td className="border-b px-2 py-2 font-bold" style={{ borderColor: "#e9edf3" }}>{r.componentName}</td>
                                   <td className="border-b px-2 py-2" style={{ borderColor: "#e9edf3" }}>
-                                    <span className="px-1.5 py-0.5 text-[11px] font-bold" style={r.role === "핵심" ? { background: "var(--crimson)", color: "#fff" } : { background: "#e7eefc", color: "var(--crimson)" }}>
+                                    <span className="px-1.5 py-0.5 text-[11px] font-bold" style={r.role === "핵심" ? { background: "var(--crimson)", color: "#fff" } : { background: "#e6f1fb", color: "var(--crimson)" }}>
                                       {r.role}
                                     </span>
                                   </td>
@@ -1481,63 +1510,116 @@ export function Workspace() {
           )}
         </div>
 
-        {/* SIDEBAR: 멘토링에서 사건 기록·재조사 칸은 화면에서 빼기로 해서 숨겨 둔다 (마이페이지로 옮길 때까지) */}
-        <aside className="hidden">
-          {disc && (
-            <Card>
-              <h3 className="mb-1 text-sm font-extrabold">공개 전 출원 알림</h3>
-              <div className="font-[family-name:var(--font-display)] text-3xl font-bold" style={{ color: disc.level === "여유" ? "var(--ink)" : "var(--crimson)" }}>
-                {disc.days >= 0 ? `D-${disc.days}` : `D+${-disc.days}`}
-              </div>
-              <p className="mt-1 text-[12.5px]" style={{ color: "var(--ink-soft)" }}>{disc.message}</p>
-            </Card>
-          )}
+        {/* 내 작업: 진행 중인 사건 · 사건 기록 · 개발 단계별 재조사 (멘토 시안의 마이페이지) */}
+        {view === "my" && (
+          <div className="min-w-0">
+            <section className="rounded-none border bg-white px-6 py-8 sm:px-10" style={{ borderColor: "var(--hairline)" }}>
+              <h2 className="text-[22px] font-extrabold">내 작업</h2>
 
-          {rows.length > 0 && (
-            <Card>
-              <h3 className="mb-2 text-sm font-extrabold">개발 단계별 재조사</h3>
-              <ol className="mb-3 space-y-1.5">
-                {DEV_STAGES.map((s) => {
-                  const rec = surveys.filter((r) => r.stage === s).at(-1);
-                  const current = s === stage;
-                  return (
-                    <li key={s} className="flex items-center justify-between gap-2 text-[12.5px]">
-                      <span className="font-bold" style={{ color: current ? "var(--crimson)" : rec ? "var(--ink)" : "var(--ink-mute)" }}>
-                        {current ? "● " : rec ? "○ " : "· "}
-                        {s}
-                      </span>
-                      {rec && <span className="font-mono text-[10.5px]" style={{ color: "var(--ink-soft)" }}>변경 {rec.changedCount}</span>}
-                    </li>
-                  );
-                })}
-              </ol>
-              <select value={nextStage} onChange={(e) => setNextStage(e.target.value as DevStage)} className={`mb-2 w-full ${inputCls}`} style={{ borderColor: "var(--hairline)", background: "#fff" }} aria-label="다음 개발 단계">
-                {DEV_STAGES.map((s) => <option key={s}>{s}</option>)}
-              </select>
-              <textarea rows={3} value={changeNote} onChange={(e) => setChangeNote(e.target.value)} placeholder="바뀐 설계 내용 (예: 펌프 대신 밸브로 유량 조절)" className={`mb-2 w-full p-2 text-[12.5px] ${inputCls}`} style={{ borderColor: "var(--hairline)", background: "#fff" }} />
-              <Button onClick={doResurvey} loading={busy === "resurvey"}>이 단계로 재조사</Button>
-              <p className="mt-2 text-[11.5px]" style={{ color: "var(--ink-soft)" }}>바뀐 설계로 다시 조사하고, 판단이 바뀐 구성만 재승인을 요구합니다.</p>
-            </Card>
-          )}
-
-          <Card>
-            <h3 className="mb-3 text-sm font-extrabold">사건 기록</h3>
-            {events.length === 0 ? (
-              <p className="text-[12.5px]" style={{ color: "var(--ink-soft)" }}>발명 자료를 넣으면 누가 언제 무엇을 했는지 여기에 쌓입니다.</p>
-            ) : (
-              <ol className="max-h-[50vh] space-y-3 overflow-y-auto">
-                {events.map((e, i) => (
-                  <li key={i} className="border-l-2 pl-3 text-[12.5px]" style={{ borderColor: e.actor === "InPro AI" ? "var(--ink-mute)" : "var(--crimson)" }}>
-                    <div className="font-mono text-[10.5px]" style={{ color: "var(--ink-soft)" }}>
-                      {new Date(e.at).toLocaleTimeString("ko-KR")} · {e.actor}
+              <div className="mt-8 border-t pt-6" style={{ borderColor: "var(--rule)" }}>
+                <h3 className="text-[18px] font-extrabold">진행 중인 사건</h3>
+                {intake ? (
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-b pb-6" style={{ borderColor: "var(--rule)" }}>
+                    <div className="min-w-0">
+                      <div className="font-mono text-[11px] tracking-widest" style={{ color: "var(--ink-mute)" }}>
+                        {caseNo ?? "CASE"} · {intake.field}
+                      </div>
+                      <div className="mt-1 text-[17px] font-extrabold">{intake.title}</div>
+                      <div className="mt-1 text-[13.5px]" style={{ color: "var(--ink-soft)" }}>
+                        {step}단계 {STEPS[step - 1]} · 개발 단계 {stage}
+                        {disc ? ` · 공개 ${disc.days >= 0 ? `D-${disc.days}` : `D+${-disc.days}`}` : ""}
+                      </div>
                     </div>
-                    {e.text}
-                  </li>
-                ))}
-              </ol>
-            )}
-          </Card>
-        </aside>
+                    <Button onClick={() => setView("work")}>이어서 작업</Button>
+                  </div>
+                ) : (
+                  <p className="mt-3 border-b pb-6 text-[14px]" style={{ borderColor: "var(--rule)", color: "var(--ink-mute)" }}>
+                    진행 중인 사건 없음
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-8">
+                <h3 className="text-[18px] font-extrabold">사건 기록</h3>
+                {events.length === 0 ? (
+                  <p className="mt-3 border-b pb-6 text-[14px]" style={{ borderColor: "var(--rule)", color: "var(--ink-mute)" }}>
+                    기록 없음. 발명 자료를 넣으면 누가 언제 무엇을 했는지 여기에 쌓입니다.
+                  </p>
+                ) : (
+                  <ul className="mt-3 max-h-[50vh] overflow-y-auto border-t" style={{ borderColor: "var(--rule)" }}>
+                    {events.map((e, i) => (
+                      <li key={i} className="grid grid-cols-[84px_84px_1fr] gap-x-3 border-b py-3 text-[13.5px]" style={{ borderColor: "var(--rule)" }}>
+                        <span className="font-mono text-[12px]" style={{ color: "var(--ink-mute)" }}>
+                          {new Date(e.at).toLocaleTimeString("ko-KR")}
+                        </span>
+                        <span className="font-bold" style={{ color: e.actor === "InPro AI" ? "var(--ink-soft)" : "var(--crimson)" }}>
+                          {e.actor}
+                        </span>
+                        <span>{e.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="mt-8">
+                <h3 className="text-[18px] font-extrabold">개발 단계별 재조사</h3>
+                {rows.length === 0 ? (
+                  <p className="mt-3 text-[14px]" style={{ color: "var(--ink-mute)" }}>
+                    설계가 바뀐 사건을 골라 다시 조사. 판단이 바뀐 구성만 재승인. 선행기술 비교가 끝난 사건부터 쓸 수 있습니다.
+                  </p>
+                ) : (
+                  <div className="mt-4 grid gap-x-12 gap-y-6 md:grid-cols-[1fr_1.2fr]">
+                    <ol className="border-t" style={{ borderColor: "var(--rule)" }}>
+                      {DEV_STAGES.map((s) => {
+                        const rec = surveys.filter((r) => r.stage === s).at(-1);
+                        const current = s === stage;
+                        return (
+                          <li key={s} className="flex items-center justify-between gap-2 border-b py-3 text-[14px]" style={{ borderColor: "var(--rule)" }}>
+                            <span className="font-bold" style={{ color: current ? "var(--crimson)" : rec ? "var(--ink)" : "var(--ink-mute)" }}>
+                              {s}
+                              {current ? " (현재)" : ""}
+                            </span>
+                            {rec && (
+                              <span className="text-[13px]" style={{ color: "var(--ink-soft)" }}>
+                                바뀐 구성 {rec.changedCount}개
+                              </span>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ol>
+                    <div>
+                      <Field label="다음 개발 단계" htmlFor="next-stage">
+                        <Select id="next-stage" value={nextStage} onChange={(v) => setNextStage(v as DevStage)}>
+                          {DEV_STAGES.map((s) => (
+                            <option key={s}>{s}</option>
+                          ))}
+                        </Select>
+                      </Field>
+                      <Field label="바뀐 설계 내용" htmlFor="change-note" className="mt-4">
+                        <textarea
+                          id="change-note"
+                          rows={3}
+                          value={changeNote}
+                          onChange={(e) => setChangeNote(e.target.value)}
+                          placeholder="예: 펌프 대신 밸브로 유량 조절"
+                          className="w-full rounded-[10px] border bg-white px-3.5 py-3 text-[15px] outline-none transition placeholder:text-[var(--ink-mute)] focus:border-[var(--crimson)]"
+                          style={{ borderColor: "var(--rule)" }}
+                        />
+                      </Field>
+                      <div className="mt-4">
+                        <Button onClick={doResurvey} loading={busy === "resurvey"}>
+                          이 단계로 재조사
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+        )}
       </main>
     </div>
   );

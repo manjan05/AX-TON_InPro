@@ -1,11 +1,14 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { ComparisonRow, Relation } from "@/lib/inpro/types";
 
-export function InProLogo() {
+// 가로형 로고: 심볼 + inpro 글자 (public/logo-mark.png, logo-word.png)
+export function InProLogo({ size = 30 }: { size?: number }) {
   return (
-    <Link href="/" className="lp-wordmark" aria-label="InPro 홈">
-      InPro
+    <Link href="/" className="inline-flex items-center gap-2.5" aria-label="InPro 홈">
+      <Image src="/logo-mark.png" alt="" width={400} height={401} className="shrink-0" style={{ height: size, width: "auto" }} priority />
+      <Image src="/logo-word.png" alt="inpro" width={700} height={293} className="shrink-0" style={{ height: size * 0.72, width: "auto" }} priority />
     </Link>
   );
 }
@@ -75,7 +78,7 @@ export function Button({
 export function Tag({ children, tone = "blue" }: { children: ReactNode; tone?: "blue" | "orange" | "gray" | "green" }) {
   const tones = {
     blue: { background: "var(--blue-soft)", color: "var(--blue)" },
-    orange: { background: "#e7eefc", color: "#1a43b8" },
+    orange: { background: "#e6f1fb", color: "#0b5cab" },
     gray: { background: "#e3e8f0", color: "var(--ink-soft)" },
     green: { background: "#e2e8df", color: "#3d5a35" },
   };
@@ -157,7 +160,7 @@ export function CompareTable({
                       “{r.quote}”
                     </blockquote>
                   ) : (
-                    <span className="text-[12px] font-bold" style={{ color: "#1a43b8" }}>
+                    <span className="text-[12px] font-bold" style={{ color: "#0b5cab" }}>
                       원문 근거 없음
                     </span>
                   )}
@@ -175,7 +178,7 @@ export function CompareTable({
                         type="checkbox"
                         checked={confirmed?.has(r.componentName) ?? false}
                         onChange={() => onToggle(r.componentName)}
-                        className="h-4 w-4 accent-[#1d4fd8]"
+                        className="h-4 w-4 accent-[#1074d1]"
                       />
                       확인
                     </label>

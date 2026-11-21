@@ -34,7 +34,7 @@ export function InventorView({
                   Q{i + 1}
                 </span>
                 <b className="text-[13.5px]">{q.componentName}</b>
-                <span className="px-1.5 py-0.5 text-[10.5px] font-bold" style={q.relation === "공통" ? { background: "var(--crimson)", color: "#fff" } : { background: "#e7eefc", color: "var(--crimson)" }}>
+                <span className="px-1.5 py-0.5 text-[10.5px] font-bold" style={q.relation === "공통" ? { background: "var(--crimson)", color: "#fff" } : { background: "#e6f1fb", color: "var(--crimson)" }}>
                   {q.relation === "공통" ? "문헌에도 있음" : "문헌에 일부 있음"}
                 </span>
               </div>

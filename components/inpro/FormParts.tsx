@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 // 입력칸 공통 모양 (멘토 시안): 높이 52px, 모서리 10px, 글자 15px
 export const fieldCls =
-  "w-full h-[52px] rounded-[10px] border bg-white px-3.5 text-[15px] outline-none transition placeholder:text-[var(--ink-mute)] focus:border-[var(--crimson)] focus:shadow-[0_0_0_3px_rgba(29,79,216,.12)]";
+  "w-full h-[52px] rounded-[10px] border bg-white px-3.5 text-[15px] outline-none transition placeholder:text-[var(--ink-mute)] focus:border-[var(--crimson)] focus:shadow-[0_0_0_3px_rgba(16,116,209,.12)]";
 const selectCls = `${fieldCls} appearance-none pr-10`;
 
 export function Field({ label, required, htmlFor, children, className = "" }: { label: string; required?: boolean; htmlFor: string; children: ReactNode; className?: string }) {

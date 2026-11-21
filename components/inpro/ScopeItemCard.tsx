@@ -8,7 +8,7 @@ const ROLES: ScopeRole[] = ["핵심", "대체 가능", "부가"];
 
 const EFFECT: Record<KeepsEffect, { label: string; style: React.CSSProperties }> = {
   유지: { label: "효과 유지 → 회피됨", style: { background: "var(--crimson)", color: "#fff" } },
-  일부: { label: "효과 일부", style: { background: "#e7eefc", color: "var(--crimson)" } },
+  일부: { label: "효과 일부", style: { background: "#e6f1fb", color: "var(--crimson)" } },
   "안 됨": { label: "효과 없음 → 회피 실패", style: { border: "1px solid var(--rule)", color: "var(--ink-soft)" } },
 };
 

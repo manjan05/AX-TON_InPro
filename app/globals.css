@@ -7,13 +7,13 @@
   --studio: #c9d8f6; /* 히어로 띠 */
   --studio-2: #e4ecfb;
   --rule: #d8dee9; /* 구분선 */
-  --ink: #111827;
+  --ink: #0f2038;
   --ink-soft: #4b5563;
   --ink-mute: #8892a3;
   /* 변수 이름은 예전 그대로(crimson)지만 지금 값은 파랑이다. 강조색은 이 두 개만 바꾸면 된다. */
-  --crimson: #1d4fd8; /* 유일한 강조색 */
-  --crimson-2: #3b6ef0;
-  --crimson-soft: #e7eefc;
+  --crimson: #1074d1; /* 유일한 강조색 */
+  --crimson-2: #0b5cab;
+  --crimson-soft: #e6f1fb;
 
   /* 작업 화면(Workspace)에서 쓰는 이름 → 새 토큰으로 연결 */
   --panel: var(--paper-2);
@@ -323,5 +323,104 @@ body {
   }
   .no-print {
     display: none !important;
+  }
+}
+
+/* 첫 화면 움직임 (HeroMotion): 로고 심볼이 숨 쉬고 궤도가 돈다 */
+.hm-stage {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  aspect-ratio: 1;
+  margin-inline: auto;
+  border-radius: 28px;
+  background: radial-gradient(circle at 50% 45%, #ffffff 0%, #f1f6fd 55%, #e4edfa 100%);
+  overflow: hidden;
+}
+.hm-mark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 54%;
+  transform: translate(-50%, -50%);
+  animation: hm-float 7s ease-in-out infinite;
+  overflow: visible;
+}
+.hm-spin {
+  transform-origin: 300px 300px;
+  animation: hm-rotate 48s linear infinite;
+}
+.hm-rev {
+  animation-duration: 36s;
+  animation-direction: reverse;
+}
+.hm-slow {
+  animation-duration: 90s;
+}
+.hm-sq {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: hm-pop 5.4s ease-in-out infinite;
+}
+.hm-line {
+  animation: hm-glow 5.4s ease-in-out infinite;
+}
+.hm-halo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: hm-ring 3.6s ease-out infinite;
+  opacity: 0;
+}
+.hm-halo-b {
+  animation-delay: 1.8s;
+}
+@keyframes hm-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes hm-float {
+  50% {
+    transform: translate(-50%, calc(-50% - 10px));
+  }
+}
+@keyframes hm-pop {
+  0%, 100% {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
+  30%, 60% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes hm-glow {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes hm-ring {
+  0% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hm-mark,
+  .hm-spin,
+  .hm-sq,
+  .hm-line,
+  .hm-halo {
+    animation: none !important;
+  }
+  .hm-halo {
+    opacity: 0;
   }
 }
